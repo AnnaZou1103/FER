@@ -45,7 +45,8 @@ class WindowAttentionSE(nn.Module):
         B_, N, C = x.shape
         qkv_bias = None
         if self.attn.q_bias is not None:
-            qkv_bias = torch.cat((self.attn.q_bias, torch.zeros_like(self.attn.v_bias, requires_grad=False), self.attn.v_bias))
+            qkv_bias = torch.cat(
+                (self.attn.q_bias, torch.zeros_like(self.attn.v_bias, requires_grad=False), self.attn.v_bias))
         qkv = F.linear(input=x, weight=self.attn.qkv.weight, bias=qkv_bias)
         qkv = qkv.reshape(B_, N, 3, self.attn.num_heads, -1).permute(2, 0, 3, 1, 4)
         q, k, v = qkv[0], qkv[1], qkv[2]  # make torchscript happy (cannot use tensor as tuple)
@@ -57,7 +58,8 @@ class WindowAttentionSE(nn.Module):
 
         relative_position_bias_table = self.attn.cpb_mlp(self.attn.relative_coords_table).view(-1, self.attn.num_heads)
         relative_position_bias = relative_position_bias_table[self.attn.relative_position_index.view(-1)].view(
-            self.attn.window_size[0] * self.attn.window_size[1], self.attn.window_size[0] * self.attn.window_size[1], -1)  # Wh*Ww,Wh*Ww,nH
+            self.attn.window_size[0] * self.attn.window_size[1], self.attn.window_size[0] * self.attn.window_size[1],
+            -1)  # Wh*Ww,Wh*Ww,nH
         relative_position_bias = relative_position_bias.permute(2, 0, 1).contiguous()  # nH, Wh*Ww, Wh*Ww
         relative_position_bias = 16 * torch.sigmoid(relative_position_bias)
         attn = attn + relative_position_bias.unsqueeze(0)
@@ -90,3 +92,28 @@ class WindowAttentionSE(nn.Module):
         # x = self.proj(x)
         flops += N * self.attn.dim * self.attn.dim
         return flops
+
+
+from timm.models.swin_transformer_v2 import BasicLayer
+import torch.utils.checkpoint as checkpoint
+
+
+class BasicLayerSE(BasicLayer):
+    def __init__(
+            self, dim, input_resolution, depth, num_heads, window_size,
+            mlp_ratio=4., qkv_bias=True, drop=0., attn_drop=0., drop_path=0.,
+            norm_layer=nn.LayerNorm, downsample=None, pretrained_window_size=0):
+        super().__init__(self, dim, input_resolution, depth, num_heads, window_size,
+                         mlp_ratio=4., qkv_bias=True, drop=0., attn_drop=0., drop_path=0.,
+                         norm_layer=nn.LayerNorm, downsample=None, pretrained_window_size=0)
+        self.se_layer = SELayer(dim)
+
+    def forward(self, x):
+        for blk in self.blocks:
+            if self.grad_checkpointing and not torch.jit.is_scripting():
+                x = checkpoint.checkpoint(blk, x)
+            else:
+                x = blk(x)
+        x = self.se_layer(x)
+        x = self.downsample(x)
+        return x

@@ -15,13 +15,52 @@ from sklearn.metrics import classification_report
 from timm.data.mixup import Mixup
 from timm.loss import SoftTargetCrossEntropy
 from torchvision import datasets
-from timm.models.swin_transformer_v2 import swinv2_tiny_window16_256
+from timm.models.swin_transformer_v2 import swinv2_base_window16_256
 
 torch.backends.cudnn.benchmark = False
 import warnings
 
 warnings.filterwarnings("ignore")
-from utils.ema import EMA
+from ema import EMA
+
+from timm.models.swin_transformer_v2 import BasicLayer
+import torch.utils.checkpoint as checkpoint
+
+class SELayer(nn.Module):
+    def __init__(self, channel, reduction=4):
+        super(SELayer, self).__init__()
+        self.avg_pool = nn.AdaptiveAvgPool1d(1)
+        self.fc = nn.Sequential(
+            nn.Linear(channel, channel // reduction, bias=False),
+            nn.ReLU(inplace=True),
+            nn.Linear(channel // reduction, channel, bias=False),
+            nn.Sigmoid()
+        )
+
+    def forward(self, x):  # x: [B, N, C]
+        x = torch.transpose(x, 1, 2)  # [B, C, N]
+        b, c, _ = x.size()
+        y = self.avg_pool(x).view(b, c)
+        y = self.fc(y).view(b, c, 1)
+        x = x * y.expand_as(x)
+        x = torch.transpose(x, 1, 2)  # [B, N, C]
+        return x
+
+class BasicLayerSE(nn.Module):
+    def __init__(self, dim, layer):
+        super(BasicLayerSE, self).__init__()
+        self.layer = layer
+        self.se_layer = SELayer(dim)
+
+    def forward(self, x):
+        for blk in self.layer.blocks:
+            if self.layer.grad_checkpointing and not torch.jit.is_scripting():
+                x = checkpoint.checkpoint(blk, x)
+            else:
+                x = blk(x)
+        x = self.se_layer(x)
+        x = self.layer.downsample(x)
+        return x
 
 
 def train(model, device, train_loader, optimizer, epoch):
@@ -122,7 +161,7 @@ def val(model, device, test_loader):
 
 
 if __name__ == '__main__':
-    file_dir = 'checkpoints_FER'
+    file_dir = 'checkpoints_se'
     if os.path.exists(file_dir):
         print('Directory exists.')
         shutil.rmtree(file_dir)
@@ -142,7 +181,7 @@ if __name__ == '__main__':
     class_num = 7
     resume = False
     CLIP_GRAD = 5.0
-    model_path = 'checkpoints_FER/best.pth'
+    model_path = 'checkpoints_se_FER/best.pth'
     Best_ACC = 0
     use_ema = True
     ema_epoch = 32
@@ -150,16 +189,17 @@ if __name__ == '__main__':
     transform = transforms.Compose([
         transforms.RandomHorizontalFlip(),
         transforms.RandomRotation(10, expand=True),
+        transforms.RandomGrayscale(p=0.25),
         transforms.ColorJitter(brightness=0.5, contrast=0.5, saturation=0.5),
         transforms.Resize((256, 256)),
         transforms.ToTensor(),
-        transforms.Normalize(mean=[0.50774, 0.50774, 0.50774], std=[0.21202502, 0.21202502, 0.21202502]),
+        transforms.Normalize(mean=[0.5916177, 0.54559606, 0.52381414], std=[0.2983136, 0.3015795, 0.30528155]),
     ])
 
     transform_test = transforms.Compose([
         transforms.Resize((img_size, img_size)),
         transforms.ToTensor(),
-        transforms.Normalize(mean=[0.50774, 0.50774, 0.50774], std=[0.21202502, 0.21202502, 0.21202502])
+        transforms.Normalize(mean=[0.5916177, 0.54559606, 0.52381414], std=[0.2983136, 0.3015795, 0.30528155])
     ])
 
     mixup_fn = Mixup(
@@ -167,8 +207,8 @@ if __name__ == '__main__':
         prob=0.1, switch_prob=0.5, mode='batch',
         label_smoothing=0.1, num_classes=class_num)
 
-    dataset_train = datasets.ImageFolder('FER/train', transform=transform)
-    dataset_test = datasets.ImageFolder("FER/test", transform=transform_test)
+    dataset_train = datasets.ImageFolder('dataRefined/train', transform=transform)
+    dataset_test = datasets.ImageFolder("dataRefined/val", transform=transform_test)
 
     train_loader = torch.utils.data.DataLoader(dataset_train, batch_size=BATCH_SIZE, shuffle=True)
     test_loader = torch.utils.data.DataLoader(dataset_test, batch_size=BATCH_SIZE, shuffle=False)
@@ -176,9 +216,14 @@ if __name__ == '__main__':
     criterion_train = SoftTargetCrossEntropy()
     criterion_val = torch.nn.CrossEntropyLoss()
 
-    model_ft = swinv2_tiny_window16_256(pretrained=True)
-    num_ftrs = model_ft.head.in_features
+    model_ft = swinv2_base_window16_256(pretrained=True)
+    num_layers = len(model_ft.layers)
 
+    for i_layer in range(num_layers):
+        layer = model_ft.layers[i_layer]
+        model_ft.layers[i_layer] = BasicLayerSE(dim=layer.dim, layer=layer)
+
+    num_ftrs = model_ft.head.in_features
     model_ft.head = nn.Linear(num_ftrs, class_num)
 
     if resume:

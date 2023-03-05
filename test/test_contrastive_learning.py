@@ -12,41 +12,19 @@ import numpy as np
 import torch.nn as nn
 import torch.utils.checkpoint as checkpoint
 
-class SELayer(nn.Module):
-    def __init__(self, channel, reduction=4):
-        super(SELayer, self).__init__()
-        self.avg_pool = nn.AdaptiveAvgPool1d(1)
-        self.fc = nn.Sequential(
-            nn.Linear(channel, channel // reduction, bias=False),
-            nn.ReLU(inplace=True),
-            nn.Linear(channel // reduction, channel, bias=False),
-            nn.Sigmoid()
-        )
 
-    def forward(self, x):  # x: [B, N, C]
-        x = torch.transpose(x, 1, 2)  # [B, C, N]
-        b, c, _ = x.size()
-        y = self.avg_pool(x).view(b, c)
-        y = self.fc(y).view(b, c, 1)
-        x = x * y.expand_as(x)
-        x = torch.transpose(x, 1, 2)  # [B, N, C]
-        return x
-
-class BasicLayerSE(nn.Module):
-    def __init__(self, dim, layer):
-        super(BasicLayerSE, self).__init__()
-        self.layer = layer
-        self.se_layer = SELayer(dim)
+class Swin(nn.Module):
+    def __init__(self, swin):
+        super().__init__()
+        self.swin = swin
+        num_ftrs = swin.head.in_features
+        self.head = nn.Linear(num_ftrs, 7)
 
     def forward(self, x):
-        for blk in self.layer.blocks:
-            if self.layer.grad_checkpointing and not torch.jit.is_scripting():
-                x = checkpoint.checkpoint(blk, x)
-            else:
-                x = blk(x)
-        x = self.se_layer(x)
-        x = self.layer.downsample(x)
-        return x
+        feats = self.swin.forward_features(x)
+        feats = feats.mean(dim=1)
+        x = self.head(feats)
+        return feats, x
 
 def fer(img, file):
     transform_test = transforms.Compose([
@@ -63,7 +41,7 @@ def fer(img, file):
     img = transform_test(img)
     img.unsqueeze_(0)
     img = Variable(img).to(DEVICE)
-    out = model(img)
+    feats, out = model(img)
     _, pred = torch.max(out.data, 1)
 
     result[int(file_class) - 1][pred.data.item()] += 1
@@ -72,15 +50,15 @@ def fer(img, file):
 
 
 if __name__ == '__main__':
-    label_file = open('../dataset/list_patition_label.txt', 'r')
+    label_file = open('list_patition_label.txt', 'r')
     labels = label_file.readlines()
 
     DEVICE = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-    model = torch.load('../checkpoints/retina_pretrain/best.pth')
+    model = torch.load('checkpoints/best.pth')
     model.eval()
     model.to(DEVICE)
 
-    image_path = '../dataset/RAFDBRefined/test/*.jpg'
+    image_path = 'dataRefined/test/*.jpg'
     testList = glob.glob(image_path)
 
     idx = 0
@@ -119,4 +97,4 @@ if __name__ == '__main__':
                                        show_normed=True,
                                        colorbar=True)
     figure.set_size_inches(8, 8)
-    plt.savefig("../output/confusion_matrix.png")
+    plt.savefig("output/confusion_matrix.png")
