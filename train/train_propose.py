@@ -10,19 +10,113 @@ import torch.optim as optim
 import torch.utils.data
 import torch.utils.data.distributed
 import torchvision.transforms as transforms
+from retinaface import RetinaFace
 from timm.utils import accuracy, AverageMeter
 from sklearn.metrics import classification_report
 from timm.data.mixup import Mixup
 from timm.loss import SoftTargetCrossEntropy
 from torchvision import datasets
-from timm.models.swin_transformer_v2 import swinv2_tiny_window16_256
+from timm.models.swin_transformer_v2 import swinv2_base_window16_256
 
 torch.backends.cudnn.benchmark = False
 import warnings
 
 warnings.filterwarnings("ignore")
 from ema import EMA
-from ghost_block import WindowAttentionGhost, MlpGhost
+import torch.utils.checkpoint as checkpoint
+
+class Swin(nn.Module):
+    def __init__(self, swin):
+        super().__init__()
+        self.swin = swin
+        num_ftrs = swin.head.in_features
+        self.head = nn.Linear(num_ftrs, class_num)
+
+    def forward(self, x):
+        feats = self.swin.forward_features(x)
+        feats = feats.mean(dim=1)
+        x = self.head(feats)
+        return feats, x
+
+class SELayer(nn.Module):
+    def __init__(self, channel, reduction=4):
+        super(SELayer, self).__init__()
+        self.avg_pool = nn.AdaptiveAvgPool1d(1)
+        self.fc = nn.Sequential(
+            nn.Linear(channel, channel // reduction, bias=False),
+            nn.ReLU(inplace=True),
+            nn.Linear(channel // reduction, channel, bias=False),
+            nn.Sigmoid()
+        )
+
+    def forward(self, x):  # x: [B, N, C]
+        x = torch.transpose(x, 1, 2)  # [B, C, N]
+        b, c, _ = x.size()
+        y = self.avg_pool(x).view(b, c)
+        y = self.fc(y).view(b, c, 1)
+        x = x * y.expand_as(x)
+        x = torch.transpose(x, 1, 2)  # [B, N, C]
+        return x
+
+class BasicLayerSE(nn.Module):
+    def __init__(self, dim, layer):
+        super(BasicLayerSE, self).__init__()
+        self.layer = layer
+        self.se_layer = SELayer(dim)
+
+    def forward(self, x):
+        for blk in self.layer.blocks:
+            if self.layer.grad_checkpointing and not torch.jit.is_scripting():
+                x = checkpoint.checkpoint(blk, x)
+            else:
+                x = blk(x)
+        x = self.se_layer(x)
+        x = self.layer.downsample(x)
+        return x
+
+class CenterLoss(nn.Module):
+    """Center loss.
+
+    Reference:
+    Wen et al. A Discriminative Feature Learning Approach for Deep Face Recognition. ECCV 2016.
+
+    Args:
+        num_classes (int): number of classes.
+        feat_dim (int): feature dimension.
+    """
+
+    def __init__(self, num_classes=10, feat_dim=2, use_gpu=False):
+        super(CenterLoss, self).__init__()
+        self.num_classes = num_classes
+        self.feat_dim = feat_dim
+        self.use_gpu = use_gpu
+
+        if self.use_gpu:
+            self.centers = nn.Parameter(torch.randn(self.num_classes, self.feat_dim).cuda())
+        else:
+            self.centers = nn.Parameter(torch.randn(self.num_classes, self.feat_dim))
+
+    def forward(self, x, labels):
+        """
+        Args:
+            x: feature matrix with shape (batch_size, feat_dim).
+            labels: ground truth labels with shape (batch_size).
+        """
+        batch_size = x.size(0)
+        distmat = torch.pow(x, 2).sum(dim=1, keepdim=True).expand(batch_size, self.num_classes) + \
+                  torch.pow(self.centers, 2).sum(dim=1, keepdim=True).expand(self.num_classes, batch_size).t()
+        distmat.addmm_(1, -2, x, self.centers.t())
+
+        classes = torch.arange(self.num_classes).long()
+        if self.use_gpu: classes = classes.cuda()
+        labels = labels.unsqueeze(1).expand(batch_size, self.num_classes)
+        mask = labels.eq(classes.expand(batch_size, self.num_classes))
+
+        dist = distmat * mask.float()
+        loss = dist.clamp(min=1e-12, max=1e+12).sum() / batch_size
+
+        return loss
+
 
 def train(model, device, train_loader, optimizer, epoch):
     model.train()
@@ -41,11 +135,12 @@ def train(model, device, train_loader, optimizer, epoch):
             print(len(data))
         data, target = data.to(device, non_blocking=True), target.to(device, non_blocking=True)
         samples, targets = mixup_fn(data, target)
-        output = model(samples)
+        feats, output = model(samples)
         optimizer.zero_grad()
         if use_amp:
             with torch.cuda.amp.autocast():
-                loss = criterion_train(output, targets)
+                loss = criterion_train(output, targets) + loss_weight * center_loss(feats, target)
+            optimzer_center.zero_grad()
             scaler.scale(loss).backward()
             torch.nn.utils.clip_grad_norm_(model.parameters(), CLIP_GRAD)
             # Unscales gradients and calls
@@ -53,15 +148,22 @@ def train(model, device, train_loader, optimizer, epoch):
             scaler.step(optimizer)
             # Updates the scale for next iteration
             scaler.update()
+
             if use_ema and epoch % ema_epoch == 0:
                 ema.update()
         else:
-            loss = criterion_train(output, targets)
+            loss = criterion_train(output, targets) + loss_weight * center_loss(feats, target)
+            optimzer_center.zero_grad()
             loss.backward()
             # torch.nn.utils.clip_grad_norm_(train.parameters(), CLIP_GRAD)
             optimizer.step()
             if use_ema and epoch % ema_epoch == 0:
                 ema.update()
+
+        for param in center_loss.parameters():
+            param.grad.data *= (1. / loss_weight)
+        optimzer_center.step()
+
         torch.cuda.synchronize()
         lr = optimizer.state_dict()['param_groups'][0]['lr']
         loss_meter.update(loss.item(), target.size(0))
@@ -80,24 +182,24 @@ def train(model, device, train_loader, optimizer, epoch):
 
 
 @torch.no_grad()
-def val(model, device, test_loader):
+def val(model, device, val_loader):
     global Best_ACC
     model.eval()
     loss_meter = AverageMeter()
     acc1_meter = AverageMeter()
     acc5_meter = AverageMeter()
-    total_num = len(test_loader.dataset)
-    print(total_num, len(test_loader))
+    total_num = len(val_loader.dataset)
+    print(total_num, len(val_loader))
     val_list = []
     pred_list = []
     if use_ema and epoch % ema_epoch == 0:
         ema.apply_shadow()
-    for data, target in test_loader:
+    for data, target in val_loader:
         for t in target:
             val_list.append(t.data.item())
         data, target = data.to(device, non_blocking=True), target.to(device, non_blocking=True)
-        output = model(data)
-        loss = criterion_val(output, target)
+        feats, output = model(data)
+        loss = criterion_val(output, target) + loss_weight * center_loss(feats, target)
         _, pred = torch.max(output.data, 1)
         for p in pred:
             pred_list.append(p.data.item())
@@ -110,7 +212,7 @@ def val(model, device, test_loader):
     acc = acc1_meter.avg
     print('\nVal set: Average loss: {:.4f}\tAcc1:{:.3f}%\tAcc5:{:.3f}%\n'.format(
         loss_meter.avg, acc, acc5_meter.avg))
-    if acc > Best_ACC:
+    if acc > Best_ACC :
         if isinstance(model, torch.nn.DataParallel):
             torch.save(model.module, file_dir + "/" + 'model_' + str(epoch) + '_' + str(round(acc, 3)) + '.pth')
             torch.save(model.module, file_dir + '/' + 'best.pth')
@@ -120,9 +222,8 @@ def val(model, device, test_loader):
         Best_ACC = acc
     return val_list, pred_list, loss_meter.avg, acc
 
-
 if __name__ == '__main__':
-    file_dir = 'checkpoints_ghost_mlp'
+    file_dir = 'checkpoints'
     if os.path.exists(file_dir):
         print('Directory exists.')
         shutil.rmtree(file_dir)
@@ -135,14 +236,14 @@ if __name__ == '__main__':
     model_lr = 1e-4
     weight_decay = 1e-8
     BATCH_SIZE = 16
-    EPOCHS = 20
+    EPOCHS = 30
     DEVICE = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
     use_amp = True  # Mixed precision training
     use_dp = True
     class_num = 7
     resume = False
     CLIP_GRAD = 5.0
-    model_path = 'checkpoints_ghost_mlp/best.pth'
+    model_path = 'checkpoints/best.pth'
     Best_ACC = 0
     use_ema = True
     ema_epoch = 32
@@ -150,6 +251,7 @@ if __name__ == '__main__':
     transform = transforms.Compose([
         transforms.RandomHorizontalFlip(),
         transforms.RandomRotation(10, expand=True),
+        transforms.RandomGrayscale(p=0.25),
         transforms.ColorJitter(brightness=0.5, contrast=0.5, saturation=0.5),
         transforms.Resize((256, 256)),
         transforms.ToTensor(),
@@ -159,7 +261,7 @@ if __name__ == '__main__':
     transform_test = transforms.Compose([
         transforms.Resize((img_size, img_size)),
         transforms.ToTensor(),
-        transforms.Normalize(mean=[0.5916177, 0.54559606, 0.52381414], std=[0.2983136, 0.3015795, 0.30528155])
+        transforms.Normalize([0.5916177, 0.54559606, 0.52381414], std=[0.2983136, 0.3015795, 0.30528155])
     ])
 
     mixup_fn = Mixup(
@@ -167,24 +269,29 @@ if __name__ == '__main__':
         prob=0.1, switch_prob=0.5, mode='batch',
         label_smoothing=0.1, num_classes=class_num)
 
-    dataset_train = datasets.ImageFolder('data/train', transform=transform)
-    dataset_test = datasets.ImageFolder("data/val", transform=transform_test)
+    dataset_train = datasets.ImageFolder('dataRefined/train', transform=transform)
+    dataset_test = datasets.ImageFolder("dataRefined/val", transform=transform_test)
 
     train_loader = torch.utils.data.DataLoader(dataset_train, batch_size=BATCH_SIZE, shuffle=True)
-    test_loader = torch.utils.data.DataLoader(dataset_test, batch_size=BATCH_SIZE, shuffle=False)
+    val_loader = torch.utils.data.DataLoader(dataset_test, batch_size=BATCH_SIZE, shuffle=False)
+
+    model_ft = swinv2_base_window16_256(pretrained=True)
+    num_layers = len(model_ft.layers)
+
+    for i_layer in range(num_layers):
+        layer = model_ft.layers[i_layer]
+        model_ft.layers[i_layer] = BasicLayerSE(dim=layer.dim, layer=layer)
+
+    model_ft = Swin(model_ft)
+    num_ftrs = model_ft.head.in_features
 
     criterion_train = SoftTargetCrossEntropy()
     criterion_val = torch.nn.CrossEntropyLoss()
 
-    model_ft = swinv2_tiny_window16_256(pretrained=True)
-
-    for layer in model_ft.layers:
-        for block in layer.blocks:
-            block.attn = WindowAttentionGhost(block.attn)
-            block.mlp = MlpGhost(block.mlp)
-
-    num_ftrs = model_ft.head.in_features
-    model_ft.head = nn.Linear(num_ftrs, class_num)
+    # center loss and optimizer
+    loss_weight = 0.001
+    center_loss = CenterLoss(num_classes=class_num, feat_dim=num_ftrs, use_gpu=True)
+    optimzer_center = torch.optim.SGD(center_loss.parameters(), lr=0.5)
 
     if resume:
         model_ft = torch.load(model_path)
@@ -213,7 +320,7 @@ if __name__ == '__main__':
         log_dir['train_acc'] = train_acc_list
         log_dir['train_loss'] = train_loss_list
 
-        val_list, pred_list, val_loss, val_acc = val(model_ft, DEVICE, test_loader)
+        val_list, pred_list, val_loss, val_acc = val(model_ft, DEVICE, val_loader)
         val_loss_list.append(val_loss)
         val_acc_list.append(val_acc)
         log_dir['val_acc'] = val_acc_list

@@ -1,10 +1,7 @@
-import shutil
-
 from retinaface import RetinaFace
 import cv2
 import torchvision.transforms as transforms
 import torch
-import os
 from PIL import Image
 from torch.autograd import Variable
 import glob
@@ -30,20 +27,20 @@ def fer(img, label):
 
 if __name__ == '__main__':
     DEVICE = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-    model = torch.load('checkpoints_wopretrained_base/best.pth')
+    model = torch.load('../checkpoints/retina/best.pth')
     model.eval()
     model.to(DEVICE)
 
-    image_path = 'multiface/*/*.jpg'
+    image_path = '../dataset/multiface/*/*.jpg'
     testList = glob.glob(image_path)
 
     total_face = 0
-    correct_image= 0
+    correct_image = 0
     correct_face = 0
 
     for file in testList:
         count = 0
-        num =0
+        num = 0
         img = cv2.imread(file)
         faces = RetinaFace.extract_faces(img, align=True)
         file_class = int(file.split('_')[-1].split('.')[0])
@@ -57,14 +54,14 @@ if __name__ == '__main__':
                 continue
             else:
                 label = file_class % 10
-                file_class //=10
+                file_class //= 10
                 crop_img = Image.fromarray(face[:, :, ::-1])
-                num+=1
+                num += 1
             if fer(crop_img, label):
-                count+=1
+                count += 1
 
         total_face += num
         correct_face += count
-        if count==num:
+        if count == num:
             correct_image += 1
-    print('Match ratio:' + str(correct_image / 100), 'Accuracy:' + str(correct_face / total_face))
+    print('Match ratio:' + str(correct_image / len(testList)), 'Accuracy:' + str(correct_face / total_face))

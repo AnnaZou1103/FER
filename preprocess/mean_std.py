@@ -2,6 +2,7 @@ from torchvision.datasets import ImageFolder
 import torch
 from torchvision import transforms
 
+
 def get_mean_and_std(train_data):
     train_loader = torch.utils.data.DataLoader(
         train_data, batch_size=1, shuffle=False, num_workers=0,
@@ -18,5 +19,6 @@ def get_mean_and_std(train_data):
 
 
 if __name__ == '__main__':
-    train_dataset = ImageFolder(root=r'../dataset/FER/train/', transform=transforms.ToTensor())
+    data_dir = r'../dataset/RAFDBRefined/train/'
+    train_dataset = ImageFolder(root=data_dir, transform=transforms.ToTensor())
     print(get_mean_and_std(train_dataset))

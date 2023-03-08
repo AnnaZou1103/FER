@@ -1,6 +1,9 @@
 # Ignore Mac system files
 .DS_store
+.idea/
+__pycache__/
 
-# Ignore output, dataset checkpoints folder
+# Ignore dataset, output, dataset checkpoints folder
 dataset/
 checkpoints/
+output/

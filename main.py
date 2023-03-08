@@ -24,6 +24,7 @@ def fer(img):
     _, pred = torch.max(out.data, 1)
     print('Image Name:{},predict:{}'.format(file, emotion[pred.data.item()]))
 
+
 if __name__ == '__main__':
     emotion = ('surprise', 'fear', 'disgust', 'happiness', 'sadness', 'anger', 'neutral')
     label_file = open('list_patition_label.txt', 'r')
@@ -49,12 +50,12 @@ if __name__ == '__main__':
 
         img = cv2.imread(file)
         faces = RetinaFace.extract_faces(img, align=True)
-        if len(faces)==0:
+        if len(faces) == 0:
             fer(Image.fromarray(img))
         else:
-            idx=0
+            idx = 0
             for key in faces.keys():
-                idx+=1
+                idx += 1
                 identity = faces[key]
                 facial_area = identity['facial_area']
                 if facial_area[3] - facial_area[1] <= 15 or facial_area[2] - facial_area[0] <= 15:

@@ -1,7 +1,4 @@
 import json
-import os
-import shutil
-
 import matplotlib.pyplot as plt
 import torch
 import torch.nn as nn
@@ -10,13 +7,14 @@ import torch.optim as optim
 import torch.utils.data
 import torch.utils.data.distributed
 import torchvision.transforms as transforms
-from retinaface import RetinaFace
 from timm.utils import accuracy, AverageMeter
 from sklearn.metrics import classification_report
 from timm.data.mixup import Mixup
 from timm.loss import SoftTargetCrossEntropy
 from torchvision import datasets
-from timm.models.swin_transformer_v2 import swinv2_base_window16_256
+
+from blocks.model import create_model
+from utils.util import make_dir
 
 torch.backends.cudnn.benchmark = False
 import warnings
@@ -121,14 +119,13 @@ def val(model, device, val_loader):
         Best_ACC = acc
     return val_list, pred_list, loss_meter.avg, acc
 
+
 if __name__ == '__main__':
-    file_dir = 'checkpoints'
-    if os.path.exists(file_dir):
-        print('Directory exists.')
-        shutil.rmtree(file_dir)
-        os.makedirs(file_dir, exist_ok=True)
-    else:
-        os.makedirs(file_dir)
+    file_dir = '../checkpoints/retina'
+    trainset_path = '../dataset/RAFDBRefined/train'
+    valset_path = '../dataset/RAFDBRefined/val'
+    model_name = 'base'
+    make_dir(file_dir)
 
     # set parameters
     img_size = 256
@@ -142,7 +139,7 @@ if __name__ == '__main__':
     class_num = 7
     resume = False
     CLIP_GRAD = 5.0
-    model_path = 'checkpoints_FER/best.pth'
+    model_path = '../checkpoints/FER/best.pth'
     Best_ACC = 0
     use_ema = True
     ema_epoch = 32
@@ -168,8 +165,8 @@ if __name__ == '__main__':
         prob=0.1, switch_prob=0.5, mode='batch',
         label_smoothing=0.1, num_classes=class_num)
 
-    dataset_train = datasets.ImageFolder('dataRefined/train', transform=transform)
-    dataset_test = datasets.ImageFolder("dataRefined/val", transform=transform_test)
+    dataset_train = datasets.ImageFolder(trainset_path, transform=transform)
+    dataset_test = datasets.ImageFolder(valset_path, transform=transform_test)
 
     train_loader = torch.utils.data.DataLoader(dataset_train, batch_size=BATCH_SIZE, shuffle=True)
     val_loader = torch.utils.data.DataLoader(dataset_test, batch_size=BATCH_SIZE, shuffle=False)
@@ -177,10 +174,7 @@ if __name__ == '__main__':
     criterion_train = SoftTargetCrossEntropy()
     criterion_val = torch.nn.CrossEntropyLoss()
 
-    model_ft = swinv2_base_window16_256(pretrained=True)
-    num_ftrs = model_ft.head.in_features
-
-    model_ft.head = nn.Linear(num_ftrs, class_num)
+    model_ft = create_model(model_name)
 
     if resume:
         model_ft = torch.load(model_path)

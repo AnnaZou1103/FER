@@ -10,19 +10,24 @@ import torch.optim as optim
 import torch.utils.data
 import torch.utils.data.distributed
 import torchvision.transforms as transforms
+from retinaface import RetinaFace
 from timm.utils import accuracy, AverageMeter
 from sklearn.metrics import classification_report
 from timm.data.mixup import Mixup
 from timm.loss import SoftTargetCrossEntropy
+from kornia.losses.focal import FocalLoss
 from torchvision import datasets
 from timm.models.swin_transformer_v2 import swinv2_base_window16_256
+
+from blocks.model import create_model
+from utils.util import make_dir
 
 torch.backends.cudnn.benchmark = False
 import warnings
 
 warnings.filterwarnings("ignore")
-from ema import EMA
-from se_block import WindowAttentionSE
+from utils.ema import EMA
+
 
 def train(model, device, train_loader, optimizer, epoch):
     model.train()
@@ -45,7 +50,7 @@ def train(model, device, train_loader, optimizer, epoch):
         optimizer.zero_grad()
         if use_amp:
             with torch.cuda.amp.autocast():
-                loss = criterion_train(output, targets)
+                loss = criterion_train(output, targets) + loss_weight * center_focal(output, target)
             scaler.scale(loss).backward()
             torch.nn.utils.clip_grad_norm_(model.parameters(), CLIP_GRAD)
             # Unscales gradients and calls
@@ -56,7 +61,7 @@ def train(model, device, train_loader, optimizer, epoch):
             if use_ema and epoch % ema_epoch == 0:
                 ema.update()
         else:
-            loss = criterion_train(output, targets)
+            loss = criterion_train(output, targets) + loss_weight * center_focal(output, target)
             loss.backward()
             # torch.nn.utils.clip_grad_norm_(train.parameters(), CLIP_GRAD)
             optimizer.step()
@@ -80,19 +85,19 @@ def train(model, device, train_loader, optimizer, epoch):
 
 
 @torch.no_grad()
-def val(model, device, test_loader):
+def val(model, device, val_loader):
     global Best_ACC
     model.eval()
     loss_meter = AverageMeter()
     acc1_meter = AverageMeter()
     acc5_meter = AverageMeter()
-    total_num = len(test_loader.dataset)
-    print(total_num, len(test_loader))
+    total_num = len(val_loader.dataset)
+    print(total_num, len(val_loader))
     val_list = []
     pred_list = []
     if use_ema and epoch % ema_epoch == 0:
         ema.apply_shadow()
-    for data, target in test_loader:
+    for data, target in val_loader:
         for t in target:
             val_list.append(t.data.item())
         data, target = data.to(device, non_blocking=True), target.to(device, non_blocking=True)
@@ -120,15 +125,12 @@ def val(model, device, test_loader):
         Best_ACC = acc
     return val_list, pred_list, loss_meter.avg, acc
 
-
 if __name__ == '__main__':
-    file_dir = 'checkpoints_se'
-    if os.path.exists(file_dir):
-        print('Directory exists.')
-        shutil.rmtree(file_dir)
-        os.makedirs(file_dir, exist_ok=True)
-    else:
-        os.makedirs(file_dir)
+    file_dir = '../checkpoints/retina_focal'
+    trainset_path = '../dataset/RAFDBRefined/train'
+    valset_path = '../dataset/RAFDBRefined/val'
+    model_name = 'focal'
+    make_dir(file_dir)
 
     # set parameters
     img_size = 256
@@ -142,14 +144,15 @@ if __name__ == '__main__':
     class_num = 7
     resume = False
     CLIP_GRAD = 5.0
-    model_path = 'checkpoints_se_FER/best.pth'
+    model_path = '../checkpoints/retina_focal_FER/best.pth'
     Best_ACC = 0
-    use_ema = True
+    use_ema = False
     ema_epoch = 32
 
     transform = transforms.Compose([
         transforms.RandomHorizontalFlip(),
         transforms.RandomRotation(10, expand=True),
+        transforms.RandomGrayscale(p=0.25),
         transforms.ColorJitter(brightness=0.5, contrast=0.5, saturation=0.5),
         transforms.Resize((256, 256)),
         transforms.ToTensor(),
@@ -159,7 +162,7 @@ if __name__ == '__main__':
     transform_test = transforms.Compose([
         transforms.Resize((img_size, img_size)),
         transforms.ToTensor(),
-        transforms.Normalize(mean=[0.5916177, 0.54559606, 0.52381414], std=[0.2983136, 0.3015795, 0.30528155])
+        transforms.Normalize([0.5916177, 0.54559606, 0.52381414], std=[0.2983136, 0.3015795, 0.30528155])
     ])
 
     mixup_fn = Mixup(
@@ -167,23 +170,20 @@ if __name__ == '__main__':
         prob=0.1, switch_prob=0.5, mode='batch',
         label_smoothing=0.1, num_classes=class_num)
 
-    dataset_train = datasets.ImageFolder('dataRefined/train', transform=transform)
-    dataset_test = datasets.ImageFolder("dataRefined/val", transform=transform_test)
+    dataset_train = datasets.ImageFolder(trainset_path, transform=transform)
+    dataset_test = datasets.ImageFolder(valset_path, transform=transform_test)
 
     train_loader = torch.utils.data.DataLoader(dataset_train, batch_size=BATCH_SIZE, shuffle=True)
-    test_loader = torch.utils.data.DataLoader(dataset_test, batch_size=BATCH_SIZE, shuffle=False)
+    val_loader = torch.utils.data.DataLoader(dataset_test, batch_size=BATCH_SIZE, shuffle=False)
 
     criterion_train = SoftTargetCrossEntropy()
     criterion_val = torch.nn.CrossEntropyLoss()
 
-    model_ft = swinv2_base_window16_256(pretrained=True)
-
-    for layer in model_ft.layers:
-        for block in layer.blocks:
-            block.attn = WindowAttentionSE(block.attn)
-
-    num_ftrs = model_ft.head.in_features
-    model_ft.head = nn.Linear(num_ftrs, class_num)
+    # focal loss and optimizer
+    loss_weight = 0.001
+    center_focal = FocalLoss(alpha=0.75, reduction='mean')
+    optimzer_focal = torch.optim.SGD(center_focal.parameters(), lr=model_lr)
+    model_ft = create_model(model_name)
 
     if resume:
         model_ft = torch.load(model_path)
@@ -212,7 +212,7 @@ if __name__ == '__main__':
         log_dir['train_acc'] = train_acc_list
         log_dir['train_loss'] = train_loss_list
 
-        val_list, pred_list, val_loss, val_acc = val(model_ft, DEVICE, test_loader)
+        val_list, pred_list, val_loss, val_acc = val(model_ft, DEVICE, val_loader)
         val_loss_list.append(val_loss)
         val_acc_list.append(val_acc)
         log_dir['val_acc'] = val_acc_list

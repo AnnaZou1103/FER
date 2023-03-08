@@ -1,16 +1,11 @@
 import json
-import os
-import shutil
-
 import matplotlib.pyplot as plt
 import torch
-import torch.nn as nn
 import torch.nn.parallel
 import torch.optim as optim
 import torch.utils.data
 import torch.utils.data.distributed
 import torchvision.transforms as transforms
-from retinaface import RetinaFace
 from timm.utils import accuracy, AverageMeter
 from sklearn.metrics import classification_report
 from timm.data.mixup import Mixup
@@ -18,69 +13,16 @@ from timm.loss import SoftTargetCrossEntropy
 from torchvision import datasets
 from timm.models.swin_transformer_v2 import swinv2_base_window16_256
 
+from blocks.loss import CenterLoss
+from blocks.model import create_model
+from blocks.swin import Swin
+from utils.util import make_dir
+
 torch.backends.cudnn.benchmark = False
 import warnings
 
 warnings.filterwarnings("ignore")
-from ema import EMA
-
-
-class Swin(nn.Module):
-    def __init__(self, swin):
-        super().__init__()
-        self.swin = swin
-        num_ftrs = swin.head.in_features
-        self.head = nn.Linear(num_ftrs, class_num)
-
-    def forward(self, x):
-        feats = self.swin.forward_features(x)
-        feats = feats.mean(dim=1)
-        x = self.head(feats)
-        return feats, x
-
-
-class CenterLoss(nn.Module):
-    """Center loss.
-
-    Reference:
-    Wen et al. A Discriminative Feature Learning Approach for Deep Face Recognition. ECCV 2016.
-
-    Args:
-        num_classes (int): number of classes.
-        feat_dim (int): feature dimension.
-    """
-
-    def __init__(self, num_classes=10, feat_dim=2, use_gpu=False):
-        super(CenterLoss, self).__init__()
-        self.num_classes = num_classes
-        self.feat_dim = feat_dim
-        self.use_gpu = use_gpu
-
-        if self.use_gpu:
-            self.centers = nn.Parameter(torch.randn(self.num_classes, self.feat_dim).cuda())
-        else:
-            self.centers = nn.Parameter(torch.randn(self.num_classes, self.feat_dim))
-
-    def forward(self, x, labels):
-        """
-        Args:
-            x: feature matrix with shape (batch_size, feat_dim).
-            labels: ground truth labels with shape (batch_size).
-        """
-        batch_size = x.size(0)
-        distmat = torch.pow(x, 2).sum(dim=1, keepdim=True).expand(batch_size, self.num_classes) + \
-                  torch.pow(self.centers, 2).sum(dim=1, keepdim=True).expand(self.num_classes, batch_size).t()
-        distmat.addmm_(1, -2, x, self.centers.t())
-
-        classes = torch.arange(self.num_classes).long()
-        if self.use_gpu: classes = classes.cuda()
-        labels = labels.unsqueeze(1).expand(batch_size, self.num_classes)
-        mask = labels.eq(classes.expand(batch_size, self.num_classes))
-
-        dist = distmat * mask.float()
-        loss = dist.clamp(min=1e-12, max=1e+12).sum() / batch_size
-
-        return loss
+from utils.ema import EMA
 
 
 def train(model, device, train_loader, optimizer, epoch):
@@ -188,13 +130,11 @@ def val(model, device, val_loader):
     return val_list, pred_list, loss_meter.avg, acc
 
 if __name__ == '__main__':
-    file_dir = 'checkpoints'
-    if os.path.exists(file_dir):
-        print('Directory exists.')
-        shutil.rmtree(file_dir)
-        os.makedirs(file_dir, exist_ok=True)
-    else:
-        os.makedirs(file_dir)
+    file_dir = '../checkpoints/retina_center'
+    trainset_path = '../dataset/RAFDBRefined/train'
+    valset_path = '../dataset/RAFDBRefined/val'
+    model_name = 'center'
+    make_dir(file_dir)
 
     # set parameters
     img_size = 256
@@ -208,7 +148,7 @@ if __name__ == '__main__':
     class_num = 7
     resume = False
     CLIP_GRAD = 5.0
-    model_path = 'checkpoints/best.pth'
+    model_path = '../checkpoints/retina_center_FER/best.pth'
     Best_ACC = 0
     use_ema = True
     ema_epoch = 32
@@ -234,13 +174,13 @@ if __name__ == '__main__':
         prob=0.1, switch_prob=0.5, mode='batch',
         label_smoothing=0.1, num_classes=class_num)
 
-    dataset_train = datasets.ImageFolder('dataRefined/train', transform=transform)
-    dataset_test = datasets.ImageFolder("dataRefined/val", transform=transform_test)
+    dataset_train = datasets.ImageFolder(trainset_path, transform=transform)
+    dataset_test = datasets.ImageFolder(valset_path, transform=transform_test)
 
     train_loader = torch.utils.data.DataLoader(dataset_train, batch_size=BATCH_SIZE, shuffle=True)
     val_loader = torch.utils.data.DataLoader(dataset_test, batch_size=BATCH_SIZE, shuffle=False)
 
-    model_ft = Swin(swinv2_base_window16_256(pretrained=True))
+    model_ft = create_model(model_name)
     num_ftrs = model_ft.head.in_features
 
     criterion_train = SoftTargetCrossEntropy()

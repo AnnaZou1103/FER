@@ -3,7 +3,6 @@ import argparse
 import cv2
 import numpy as np
 import torch
-import torch.nn as nn
 from pytorch_grad_cam.utils.model_targets import ClassifierOutputTarget
 
 from pytorch_grad_cam import GradCAM, \
@@ -85,10 +84,7 @@ if __name__ == '__main__':
     if args.method not in list(methods.keys()):
         raise Exception(f"method should be one of {list(methods.keys())}")
 
-    # train = torch.load('../checkpoints_base/best.pth')
-    # train = torch.load('../checkpoints_wopretrained_base/best.pth')
-    # train = torch.load('../checkpoints_SwinV2_base/best.pth')
-    model = torch.load('../checkpoints_SwinV2_base_wpretrained/best.pth')
+    model = torch.load('../checkpoints/retina/best.pth')
 
     model.eval()
 
@@ -133,4 +129,4 @@ if __name__ == '__main__':
     grayscale_cam = grayscale_cam[0, :]
 
     cam_image = show_cam_on_image(rgb_img, grayscale_cam)
-    cv2.imwrite(f'{args.method}_cam.jpg', cam_image)
+    cv2.imwrite(f'../output/{args.method}_cam.jpg', cam_image)

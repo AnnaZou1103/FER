@@ -18,126 +18,16 @@ from torchvision import datasets
 from timm.models.swin_transformer_v2 import swinv2_base_window16_256
 import torch.nn.functional as F
 
+from blocks.loss import SupConLoss
+from blocks.model import create_model
+from blocks.swin import Swin
+from utils.util import make_dir, TwoCropTransform
 
 torch.backends.cudnn.benchmark = False
 import warnings
 
 warnings.filterwarnings("ignore")
 from utils.ema import EMA
-
-
-class Swin(nn.Module):
-    def __init__(self, swin):
-        super().__init__()
-        self.swin = swin
-        num_ftrs = swin.head.in_features
-        self.head = nn.Linear(num_ftrs, class_num)
-
-    def forward(self, x):
-        feats = self.swin.forward_features(x)
-        feats = feats.mean(dim=1)
-        x = self.head(feats)
-        feats = F.normalize(feats, dim=1)
-        return feats, x
-
-class TwoCropTransform:
-    """Create two crops of the same image"""
-    def __init__(self, transform):
-        self.transform = transform
-
-    def __call__(self, x):
-        return [self.transform(x), self.transform(x)]
-
-
-class SupConLoss(nn.Module):
-    """Supervised Contrastive Learning: https://arxiv.org/pdf/2004.11362.pdf.
-    It also supports the unsupervised contrastive loss in SimCLR"""
-    def __init__(self, temperature=0.07, contrast_mode='all',
-                 base_temperature=0.07):
-        super(SupConLoss, self).__init__()
-        self.temperature = temperature
-        self.contrast_mode = contrast_mode
-        self.base_temperature = base_temperature
-
-    def forward(self, features, labels=None, mask=None):
-        """Compute loss for train. If both `labels` and `mask` are None,
-        it degenerates to SimCLR unsupervised loss:
-        https://arxiv.org/pdf/2002.05709.pdf
-        Args:
-            features: hidden vector of shape [bsz, n_views, ...].
-            labels: ground truth of shape [bsz].
-            mask: contrastive mask of shape [bsz, bsz], mask_{i,j}=1 if sample j
-                has the same class as sample i. Can be asymmetric.
-        Returns:
-            A loss scalar.
-        """
-        device = (torch.device('cuda')
-                  if features.is_cuda
-                  else torch.device('cpu'))
-
-        if len(features.shape) < 3:
-            raise ValueError('`features` needs to be [bsz, n_views, ...],'
-                             'at least 3 dimensions are required')
-        if len(features.shape) > 3:
-            features = features.view(features.shape[0], features.shape[1], -1)
-
-        batch_size = features.shape[0]
-        if labels is not None and mask is not None:
-            raise ValueError('Cannot define both `labels` and `mask`')
-        elif labels is None and mask is None:
-            mask = torch.eye(batch_size, dtype=torch.float32).to(device)
-        elif labels is not None:
-            labels = labels.contiguous().view(-1, 1)
-            if labels.shape[0] != batch_size:
-                raise ValueError('Num of labels does not match num of features')
-            mask = torch.eq(labels, labels.T).float().to(device)
-        else:
-            mask = mask.float().to(device)
-
-        contrast_count = features.shape[1]  #   2
-        contrast_feature = torch.cat(torch.unbind(features, dim=1), dim=0)
-        #   256 x 512
-        if self.contrast_mode == 'one':
-            anchor_feature = features[:, 0]
-            anchor_count = 1
-        elif self.contrast_mode == 'all':
-            anchor_feature = contrast_feature   #   256 x   512
-            anchor_count = contrast_count   #   2
-        else:
-            raise ValueError('Unknown mode: {}'.format(self.contrast_mode))
-
-        # compute logits
-        anchor_dot_contrast = torch.div(
-            torch.matmul(anchor_feature, contrast_feature.T),
-            self.temperature)
-        # for numerical stability
-        #   print (anchor_dot_contrast.size())  256 x 256
-
-        logits_max, _ = torch.max(anchor_dot_contrast, dim=1, keepdim=True)
-        logits = anchor_dot_contrast - logits_max.detach()
-
-        # tile mask
-        mask = mask.repeat(anchor_count, contrast_count)
-
-        # mask-out self-contrast cases
-        logits_mask = torch.scatter(
-            torch.ones_like(mask),
-            1,
-            torch.arange(batch_size * anchor_count).view(-1, 1).to(device),
-            0
-        )
-        mask = mask * logits_mask
-
-        # compute log_prob
-        exp_logits = torch.exp(logits) * logits_mask
-        log_prob = logits - torch.log(exp_logits.sum(1, keepdim=True)+ 1e-6)
-
-        # compute mean of log-likelihood over positive
-        mean_log_prob_pos = (mask * log_prob).sum(1) / (mask.sum(1)+ 1e-6)
-        loss = - (self.temperature / self.base_temperature) * mean_log_prob_pos
-        loss = loss.view(anchor_count, batch_size).mean()
-        return loss
-
 
 def train(model, device, train_loader, optimizer, epoch):
     model.train()
@@ -158,7 +48,7 @@ def train(model, device, train_loader, optimizer, epoch):
         optimizer.zero_grad()
         if use_amp:
             with torch.cuda.amp.autocast():
-                loss = criterion_train(output, targets) + contra_criterion(features, target)
+                loss = criterion_train(output, targets) + contra_criterion(features, target)*loss_weight
             scaler.scale(loss).backward()
             torch.nn.utils.clip_grad_norm_(model.parameters(), CLIP_GRAD)
             # Unscales gradients and calls
@@ -169,7 +59,7 @@ def train(model, device, train_loader, optimizer, epoch):
             if use_ema and epoch % ema_epoch == 0:
                 ema.update()
         else:
-            loss = criterion_train(output, targets)+contra_criterion(features, target)
+            loss = criterion_train(output, targets)+contra_criterion(features, target)*loss_weight
             loss.backward()
             # torch.nn.utils.clip_grad_norm_(train.parameters(), CLIP_GRAD)
             optimizer.step()
@@ -235,13 +125,11 @@ def val(model, device, val_loader):
     return val_list, pred_list, loss_meter.avg, acc
 
 if __name__ == '__main__':
-    file_dir = 'checkpoints'
-    if os.path.exists(file_dir):
-        print('Directory exists.')
-        shutil.rmtree(file_dir)
-        os.makedirs(file_dir, exist_ok=True)
-    else:
-        os.makedirs(file_dir)
+    file_dir = '../checkpoints/retina_supcon'
+    trainset_path = '../dataset/RAFDBRefined/train'
+    valset_path = '../dataset/RAFDBRefined/val'
+    model_name = 'supcon'
+    make_dir(file_dir)
 
     # set parameters
     img_size = 256
@@ -287,12 +175,14 @@ if __name__ == '__main__':
     train_loader = torch.utils.data.DataLoader(dataset_train, batch_size=BATCH_SIZE, shuffle=True)
     val_loader = torch.utils.data.DataLoader(dataset_test, batch_size=BATCH_SIZE, shuffle=False)
 
-    model_ft = Swin(swinv2_base_window16_256(pretrained=True))
+    model_ft = create_model(model_name)
     num_ftrs = model_ft.head.in_features
 
     criterion_train = SoftTargetCrossEntropy()
-    contra_criterion = SupConLoss()
     criterion_val = torch.nn.CrossEntropyLoss()
+
+    loss_weight = 0.001
+    contra_criterion = SupConLoss()
 
     if resume:
         model_ft = torch.load(model_path)

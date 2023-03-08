@@ -9,6 +9,8 @@ from mlxtend.plotting import plot_confusion_matrix
 import matplotlib.pyplot as plt
 import numpy as np
 
+from utils.util import make_dir
+
 
 def fer(img, file):
     transform_test = transforms.Compose([
@@ -34,15 +36,18 @@ def fer(img, file):
 
 
 if __name__ == '__main__':
-    label_file = open('list_patition_label.txt', 'r')
+    output_dir = '../output/'
+    make_dir(output_dir)
+
+    label_file = open('../dataset/original/list_patition_label.txt', 'r')
     labels = label_file.readlines()
 
     DEVICE = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-    model = torch.load('checkpoints_base/best.pth')
+    model = torch.load('../checkpoints/pretrain/best.pth')
     model.eval()
     model.to(DEVICE)
 
-    image_path = 'RAFDBAligned/test/*/*.jpg'
+    image_path = '../dataset/RAFDBAligned/test/*/*.jpg'
     testList = glob.glob(image_path)
 
     idx = 0
@@ -57,9 +62,9 @@ if __name__ == '__main__':
 
         img = cv2.imread(file)
         if fer(Image.fromarray(img), file):
-            count+=1
+            count += 1
 
-    print('Accuracy:'+str(count/len(testList)))
+    print('Accuracy:' + str(count / len(testList)))
     label_file.close()
 
     classes = ['surprise', 'fear', 'disgust', 'happiness', 'sadness', 'anger', 'neutral']
@@ -69,4 +74,4 @@ if __name__ == '__main__':
                                        show_normed=True,
                                        colorbar=True)
     figure.set_size_inches(8, 8)
-    plt.savefig("cm.png")
+    plt.savefig(output_dir + "wo_confusion_matrix.png")
