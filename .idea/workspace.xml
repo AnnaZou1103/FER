@@ -5,46 +5,10 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="8d2b7db6-b2a6-456e-91d0-491116496d9e" name="Changes" comment="update">
-      <change afterPath="$PROJECT_DIR$/blocks/model.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/blocks/swin.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/preprocess/split.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/preprocess/split_and_refined.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.gitignore" beforeDir="false" afterPath="$PROJECT_DIR$/.gitignore" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test/test_real_time.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/README.md" beforeDir="false" afterPath="$PROJECT_DIR$/README.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/blocks/cbam_block.py" beforeDir="false" afterPath="$PROJECT_DIR$/blocks/cbam_block.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/blocks/ghost_block.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/blocks/transformer_block.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/main.py" beforeDir="false" afterPath="$PROJECT_DIR$/main.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/preprocess/KDEF.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/preprocess/RAFDB.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/preprocess/RAFDB_feature.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/preprocess/RAFDB_refined.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/preprocess/fer_refined.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/preprocess/kdef2h5.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/preprocess/kdef_refined.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/preprocess/mean_std.py" beforeDir="false" afterPath="$PROJECT_DIR$/preprocess/mean_std.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/preprocess/raf_db_h5.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/preprocess/raf_db_refined_h5.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/test/test.py" beforeDir="false" afterPath="$PROJECT_DIR$/test/test.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/test/test_contrastive_learning.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/test/test_multiface.py" beforeDir="false" afterPath="$PROJECT_DIR$/test/test_multiface.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/test/test_woRetinaFace.py" beforeDir="false" afterPath="$PROJECT_DIR$/test/test_woRetinaFace.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/train/RAFDB.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/train/resnet_finetune.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/train/train.py" beforeDir="false" afterPath="$PROJECT_DIR$/train/train.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/train/train_cbam.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/train/train_center.py" beforeDir="false" afterPath="$PROJECT_DIR$/train/train_center.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/train/train_feature.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/train/train_ghost_mlp.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/train/train_pretrained.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/train/train_se.py" beforeDir="false" afterPath="$PROJECT_DIR$/train/train_focal.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/train/train_simCLR.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/train/train_supcon.py" beforeDir="false" afterPath="$PROJECT_DIR$/train/train_supcon.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/train/train_updatedSe.py" beforeDir="false" afterPath="$PROJECT_DIR$/train/train_propose.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/utils/calculate_param.py" beforeDir="false" afterPath="$PROJECT_DIR$/utils/calculate_param.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/utils/util.py" beforeDir="false" afterPath="$PROJECT_DIR$/utils/util.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/utils/visualize.py" beforeDir="false" afterPath="$PROJECT_DIR$/utils/visualize.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/preprocess/split_and_refined.py" beforeDir="false" afterPath="$PROJECT_DIR$/preprocess/split_and_refined.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/test/test_video.py" beforeDir="false" afterPath="$PROJECT_DIR$/test/test_video.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -96,36 +60,14 @@
       <recent name="$PROJECT_DIR$" />
     </key>
     <key name="MoveFile.RECENT_KEYS">
-      <recent name="$PROJECT_DIR$/dataset/original" />
       <recent name="$PROJECT_DIR$/dataset" />
+      <recent name="$PROJECT_DIR$/test" />
+      <recent name="$PROJECT_DIR$/dataset/original" />
       <recent name="$PROJECT_DIR$/block" />
       <recent name="$PROJECT_DIR$" />
-      <recent name="$PROJECT_DIR$/test" />
     </key>
   </component>
-  <component name="RunManager" selected="Python.split_and_refined">
-    <configuration name="kdef_refined" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
-      <module name="my_code" />
-      <option name="INTERPRETER_OPTIONS" value="" />
-      <option name="PARENT_ENVS" value="true" />
-      <envs>
-        <env name="PYTHONUNBUFFERED" value="1" />
-      </envs>
-      <option name="SDK_HOME" value="" />
-      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$" />
-      <option name="IS_MODULE_SDK" value="true" />
-      <option name="ADD_CONTENT_ROOTS" value="true" />
-      <option name="ADD_SOURCE_ROOTS" value="true" />
-      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
-      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/kdef_refined.py" />
-      <option name="PARAMETERS" value="" />
-      <option name="SHOW_COMMAND_LINE" value="false" />
-      <option name="EMULATE_TERMINAL" value="false" />
-      <option name="MODULE_MODE" value="false" />
-      <option name="REDIRECT_INPUT" value="false" />
-      <option name="INPUT_FILE" value="" />
-      <method v="2" />
-    </configuration>
+  <component name="RunManager" selected="Python.test_video">
     <configuration name="main" type="PythonConfigurationType" factoryName="Python" nameIsGenerated="true">
       <module name="my_code" />
       <option name="INTERPRETER_OPTIONS" value="" />
@@ -192,7 +134,7 @@
       <option name="INPUT_FILE" value="" />
       <method v="2" />
     </configuration>
-    <configuration name="test" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
+    <configuration name="test_real_time" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
       <module name="my_code" />
       <option name="INTERPRETER_OPTIONS" value="" />
       <option name="PARENT_ENVS" value="true" />
@@ -205,7 +147,7 @@
       <option name="ADD_CONTENT_ROOTS" value="true" />
       <option name="ADD_SOURCE_ROOTS" value="true" />
       <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
-      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/test/test.py" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/test/test_real_time.py" />
       <option name="PARAMETERS" value="" />
       <option name="SHOW_COMMAND_LINE" value="false" />
       <option name="EMULATE_TERMINAL" value="false" />
@@ -236,13 +178,43 @@
       <option name="INPUT_FILE" value="" />
       <method v="2" />
     </configuration>
+    <configuration name="train" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
+      <module name="my_code" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/train" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/train/train.py" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
+    <list>
+      <item itemvalue="Python.main" />
+      <item itemvalue="Python.split" />
+      <item itemvalue="Python.split_and_refined" />
+      <item itemvalue="Python.test_video" />
+      <item itemvalue="Python.train" />
+      <item itemvalue="Python.test_real_time" />
+    </list>
     <recent_temporary>
       <list>
+        <item itemvalue="Python.test_video" />
+        <item itemvalue="Python.test_real_time" />
+        <item itemvalue="Python.train" />
         <item itemvalue="Python.split_and_refined" />
         <item itemvalue="Python.split" />
-        <item itemvalue="Python.test" />
-        <item itemvalue="Python.test_video" />
-        <item itemvalue="Python.kdef_refined" />
       </list>
     </recent_temporary>
   </component>
@@ -274,7 +246,8 @@
       <workItem from="1677993601019" duration="4122000" />
       <workItem from="1678063341848" duration="3953000" />
       <workItem from="1678147382644" duration="4847000" />
-      <workItem from="1678234832600" duration="22003000" />
+      <workItem from="1678234832600" duration="39456000" />
+      <workItem from="1678323179711" duration="2498000" />
     </task>
     <task id="LOCAL-00001" summary="update">
       <created>1678005001264</created>
@@ -317,12 +290,14 @@
   </component>
   <component name="com.intellij.coverage.CoverageDataManagerImpl">
     <SUITE FILE_PATH="coverage/my_code$fer_refined.coverage" NAME="fer_refined Coverage Results" MODIFIED="1667979857007" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/img2h5_py$kdef_refined.coverage" NAME="kdef_refined Coverage Results" MODIFIED="1668267729750" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/main_py$test_video.coverage" NAME="test_video Coverage Results" MODIFIED="1678324129194" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/test" />
+    <SUITE FILE_PATH="coverage/fer_refined_py$main.coverage" NAME="main Coverage Results" MODIFIED="1668336397402" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/main_py$test_real_time.coverage" NAME="test_real_time Coverage Results" MODIFIED="1678292402099" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/test" />
     <SUITE FILE_PATH="coverage/img2h5_py$kdef2h5.coverage" NAME="kdef2h5 Coverage Results" MODIFIED="1668150251875" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/main_py$test.coverage" NAME="test Coverage Results" MODIFIED="1677935504913" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/test" />
-    <SUITE FILE_PATH="coverage/img2h5_py$kdef_refined.coverage" NAME="kdef_refined Coverage Results" MODIFIED="1668267729750" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
-    <SUITE FILE_PATH="coverage/main_py$test_video.coverage" NAME="test_video Coverage Results" MODIFIED="1677917481906" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/test" />
     <SUITE FILE_PATH="coverage/main_py$RAFDB.coverage" NAME="RAFDB Coverage Results" MODIFIED="1678245779167" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/preprocess" />
-    <SUITE FILE_PATH="coverage/fer_refined_py$main.coverage" NAME="main Coverage Results" MODIFIED="1668336397402" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/main_py$train.coverage" NAME="train Coverage Results" MODIFIED="1678276542926" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/train" />
     <SUITE FILE_PATH="coverage/my_code$image2csv.coverage" NAME="kdef2h5 Coverage Results" MODIFIED="1668012663758" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/my_code$main.coverage" NAME="main Coverage Results" MODIFIED="1667966490656" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/my_code$kdef_refined.coverage" NAME="kdef_refined Coverage Results" MODIFIED="1668066005026" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />

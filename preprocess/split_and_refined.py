@@ -74,7 +74,7 @@ if __name__ == '__main__':
     count = 0
 
     emotion = ['surprise', 'fear', 'disgust', 'happiness', 'sadness', 'anger', 'neutral']
-    file_dir = '../dataset/RAFDB'
+    file_dir = '../dataset/RAFDBRefined'
     image_list = glob.glob('../dataset/original/RAFDB/train_*.jpg')
 
     label_file = open('../dataset/original/list_patition_label.txt', 'r')
