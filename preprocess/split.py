@@ -3,7 +3,14 @@ import os
 import shutil
 from sklearn.model_selection import train_test_split
 
-from utils.util import make_dir
+
+def make_dir(file_dir):
+    if os.path.exists(file_dir):
+        print('Directory exists')
+        shutil.rmtree(file_dir)
+        os.makedirs(file_dir)
+    else:
+        os.makedirs(file_dir)
 
 
 def split_data(dataset_dir, files, set_name='/train/'):

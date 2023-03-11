@@ -1,7 +1,4 @@
 import json
-import os
-import shutil
-
 import matplotlib.pyplot as plt
 import torch
 import torch.nn as nn
@@ -10,19 +7,17 @@ import torch.optim as optim
 import torch.utils.data
 import torch.utils.data.distributed
 import torchvision.transforms as transforms
-from retinaface import RetinaFace
 from timm.utils import accuracy, AverageMeter
 from sklearn.metrics import classification_report
 from timm.data.mixup import Mixup
 from timm.loss import SoftTargetCrossEntropy
 from torchvision import datasets
 from timm.models.swin_transformer_v2 import swinv2_base_window16_256
-
+from util import EMA
 torch.backends.cudnn.benchmark = False
 import warnings
 
 warnings.filterwarnings("ignore")
-from ema import EMA
 import torch.utils.checkpoint as checkpoint
 
 class Swin(nn.Module):

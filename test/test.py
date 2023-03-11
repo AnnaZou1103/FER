@@ -8,9 +8,20 @@ import glob
 from mlxtend.plotting import plot_confusion_matrix
 import matplotlib.pyplot as plt
 import numpy as np
+import torch.nn as nn
 
-from utils.util import make_dir
+class Swin(nn.Module):
+    def __init__(self, swin):
+        super().__init__()
+        self.swin = swin
+        num_ftrs = swin.head.in_features
+        self.head = nn.Linear(num_ftrs, 7)
 
+    def forward(self, x):
+        feats = self.swin.forward_features(x)
+        feats = feats.mean(dim=1)
+        x = self.head(feats)
+        return feats, x
 
 def fer(image, file, contrastive=False):
     transform_test = transforms.Compose([
@@ -41,10 +52,9 @@ def fer(image, file, contrastive=False):
 
 if __name__ == '__main__':
     output_dir = '../output/'
-    make_dir(output_dir)
 
     DEVICE = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-    model = torch.load('../checkpoints/retina_pretrain/best.pth')
+    model = torch.load('../checkpoints/retina_center/best.pth')
     model.eval()
     model.to(DEVICE)
 
@@ -55,7 +65,7 @@ if __name__ == '__main__':
 
     idx = 0
     count = 0
-    contrastive = False
+    contrastive = True
 
     result = [[0 for x in range(7)] for y in range(7)]
 

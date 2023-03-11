@@ -1,3 +1,4 @@
+import shutil
 import cv2
 import torchvision.transforms as transforms
 import torch
@@ -9,7 +10,14 @@ from mlxtend.plotting import plot_confusion_matrix
 import matplotlib.pyplot as plt
 import numpy as np
 
-from utils.util import make_dir
+
+def make_dir(file_dir):
+    if os.path.exists(file_dir):
+        print('Directory exists')
+        shutil.rmtree(file_dir)
+        os.makedirs(file_dir)
+    else:
+        os.makedirs(file_dir)
 
 
 def fer(img, file):

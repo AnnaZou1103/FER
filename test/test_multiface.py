@@ -7,7 +7,7 @@ from torch.autograd import Variable
 import glob
 
 
-def fer(img, label):
+def fer(img):
     transform_test = transforms.Compose([
         transforms.Resize((256, 256)),
         transforms.ToTensor(),
@@ -22,7 +22,7 @@ def fer(img, label):
     out = model(img)
     _, pred = torch.max(out.data, 1)
 
-    return pred.data.item() == label - 1
+    return pred.data.item()
 
 
 if __name__ == '__main__':
@@ -31,7 +31,7 @@ if __name__ == '__main__':
     model.eval()
     model.to(DEVICE)
 
-    image_path = '../dataset/multiface/*/*.jpg'
+    image_path = '../dataset/multiface/*/*'
     testList = glob.glob(image_path)
 
     total_face = 0
@@ -43,6 +43,9 @@ if __name__ == '__main__':
         num = 0
         img = cv2.imread(file)
         faces = RetinaFace.extract_faces(img, align=True)
+        if file.split('_')[-1].split('.')[0]=='':
+            print(file)
+            continue
         file_class = int(file.split('_')[-1].split('.')[0])
         # if len(faces) == 0:
         #     total+=1
@@ -57,11 +60,13 @@ if __name__ == '__main__':
                 file_class //= 10
                 crop_img = Image.fromarray(face[:, :, ::-1])
                 num += 1
-            if fer(crop_img, label):
+            if fer(crop_img) == label - 1:
                 count += 1
+            else: print(file.split('/')[-1], fer(crop_img), label - 1)
 
         total_face += num
         correct_face += count
         if count == num:
             correct_image += 1
-    print('Match ratio:' + str(correct_image / len(testList)), 'Accuracy:' + str(correct_face / total_face))
+    print('Total faces: ' + str(total_face))
+    print('Match ratio: ' + str(correct_image / len(testList)), 'Accuracy: ' + str(correct_face / total_face))

@@ -1,10 +1,6 @@
 import json
-import os
-import shutil
-
 import matplotlib.pyplot as plt
 import torch
-import torch.nn as nn
 import torch.nn.parallel
 import torch.optim as optim
 import torch.utils.data
@@ -15,19 +11,15 @@ from sklearn.metrics import classification_report
 from timm.data.mixup import Mixup
 from timm.loss import SoftTargetCrossEntropy
 from torchvision import datasets
-from timm.models.swin_transformer_v2 import swinv2_base_window16_256
-import torch.nn.functional as F
 
-from blocks.loss import SupConLoss
-from blocks.model import create_model
-from blocks.swin import Swin
-from utils.util import make_dir, TwoCropTransform
+from loss import SupConLoss
+from model import create_model
+from util import make_dir, TwoCropTransform, EMA
 
 torch.backends.cudnn.benchmark = False
 import warnings
 
 warnings.filterwarnings("ignore")
-from utils.ema import EMA
 
 def train(model, device, train_loader, optimizer, epoch):
     model.train()

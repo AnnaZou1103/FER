@@ -1,8 +1,11 @@
 import torch
-import math
 import torch.nn as nn
 import torch.nn.functional as F
+import torch.utils.checkpoint as checkpoint
+from timm.models.swin_transformer_v2 import swinv2_base_window16_256
 
+
+# CBAM
 class BasicConv(nn.Module):
     def __init__(self, in_planes, out_planes, kernel_size, stride=1, padding=0, dilation=1, groups=1, relu=True,
                  bn=True, bias=False):
@@ -64,6 +67,7 @@ class ChannelGate(nn.Module):
 
         scale = F.sigmoid(channel_att_sum).unsqueeze(2).unsqueeze(3).expand_as(x)
         return x * scale
+
 
 def logsumexp_2d(tensor):
     tensor_flatten = tensor.view(tensor.size(0), tensor.size(1), -1)
@@ -141,7 +145,8 @@ class PatchMergingCBAM(nn.Module):
         x2 = self.cbam_layer(x2.permute(0, 3, 1, 2))
         x3 = self.cbam_layer(x3.permute(0, 3, 1, 2))
 
-        x = torch.cat([x0.permute(0, 2, 3, 1), x1.permute(0, 2, 3, 1), x2.permute(0, 2, 3, 1), x3.permute(0, 2, 3, 1)], -1)  # B H/2 W/2 4*C
+        x = torch.cat([x0.permute(0, 2, 3, 1), x1.permute(0, 2, 3, 1), x2.permute(0, 2, 3, 1), x3.permute(0, 2, 3, 1)],
+                      -1)  # B H/2 W/2 4*C
         x = x.view(B, -1, 4 * C)  # B H/2*W/2 4*C
 
         x = self.downsample.reduction(x)
@@ -157,6 +162,7 @@ class PatchMergingCBAM(nn.Module):
         flops = (H // 2) * (W // 2) * 4 * self.downsample.dim * 2 * self.downsample.dim
         flops += H * W * self.downsample.dim // 2
         return flops
+
 
 class PatchEmbedCBAM(nn.Module):
     r""" Image to Patch Embedding
@@ -187,9 +193,88 @@ class PatchEmbedCBAM(nn.Module):
 
     def flops(self):
         Ho, Wo = self.patch_embed.patches_resolution
-        flops = Ho * Wo * self.patch_embed.embed_dim * self.patch_embed.in_chans * (self.patch_embed.patch_size[0] * self.patch_embed.patch_size[1])
+        flops = Ho * Wo * self.patch_embed.embed_dim * self.patch_embed.in_chans * (
+                self.patch_embed.patch_size[0] * self.patch_embed.patch_size[1])
         if self.patch_embed.norm is not None:
             flops += Ho * Wo * self.patch_embed.embed_dim
         return flops
 
 
+# SE
+class SELayer(nn.Module):
+    def __init__(self, channel, reduction=4):
+        super(SELayer, self).__init__()
+        self.avg_pool = nn.AdaptiveAvgPool1d(1)
+        self.fc = nn.Sequential(
+            nn.Linear(channel, channel // reduction, bias=False),
+            nn.ReLU(inplace=True),
+            nn.Linear(channel // reduction, channel, bias=False),
+            nn.Sigmoid()
+        )
+
+    def forward(self, x):  # x: [B, N, C]
+        x = torch.transpose(x, 1, 2)  # [B, C, N]
+        b, c, _ = x.size()
+        y = self.avg_pool(x).view(b, c)
+        y = self.fc(y).view(b, c, 1)
+        x = x * y.expand_as(x)
+        x = torch.transpose(x, 1, 2)  # [B, N, C]
+        return x
+
+
+class BasicLayerSE(nn.Module):
+    def __init__(self, dim, layer):
+        super(BasicLayerSE, self).__init__()
+        self.layer = layer
+        self.se_layer = SELayer(dim)
+
+    def forward(self, x):
+        for blk in self.layer.blocks:
+            if self.layer.grad_checkpointing and not torch.jit.is_scripting():
+                x = checkpoint.checkpoint(blk, x)
+            else:
+                x = blk(x)
+        x = self.se_layer(x)
+        x = self.layer.downsample(x)
+        return x
+
+
+# contrastive learning
+class Swin(nn.Module):
+    def __init__(self, swin):
+        super().__init__()
+        self.swin = swin
+        num_ftrs = swin.head.in_features
+        self.head = nn.Linear(num_ftrs, 7)
+
+    def forward(self, x):
+        feats = self.swin.forward_features(x)
+        feats = feats.mean(dim=1)
+        x = self.head(feats)
+        return feats, x
+
+
+def create_model(model_name='base', class_num=7):
+    model = swinv2_base_window16_256(pretrained=True)
+    if model_name == 'base' or model_name == 'focal':
+        num_ftrs = model.head.in_features
+        model.head = nn.Linear(num_ftrs, class_num)
+    elif model_name == 'cbam':
+        model.patch_embed = PatchEmbedCBAM(model.patch_embed)
+        for layer in model.layers:
+            if type(layer.downsample) is not nn.Identity:
+                layer.downsample = PatchMergingCBAM(layer.downsample)
+
+        num_ftrs = model.head.in_features
+        model.head = nn.Linear(num_ftrs, class_num)
+    elif model_name == 'se':
+        num_layers = len(model.layers)
+        for i_layer in range(num_layers):
+            layer = model.layers[i_layer]
+            model.layers[i_layer] = BasicLayerSE(dim=layer.dim, layer=layer)
+
+        num_ftrs = model.head.in_features
+        model.head = nn.Linear(num_ftrs, class_num)
+    elif model_name == 'center' or model_name == 'supcon':
+        model = Swin(swinv2_base_window16_256(pretrained=True))
+    return model

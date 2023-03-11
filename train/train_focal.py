@@ -1,32 +1,25 @@
 import json
-import os
-import shutil
-
 import matplotlib.pyplot as plt
 import torch
-import torch.nn as nn
 import torch.nn.parallel
 import torch.optim as optim
 import torch.utils.data
 import torch.utils.data.distributed
 import torchvision.transforms as transforms
-from retinaface import RetinaFace
 from timm.utils import accuracy, AverageMeter
 from sklearn.metrics import classification_report
 from timm.data.mixup import Mixup
 from timm.loss import SoftTargetCrossEntropy
 from kornia.losses.focal import FocalLoss
 from torchvision import datasets
-from timm.models.swin_transformer_v2 import swinv2_base_window16_256
 
-from blocks.model import create_model
-from utils.util import make_dir
+from model import create_model
+from util import make_dir, EMA
 
 torch.backends.cudnn.benchmark = False
 import warnings
 
 warnings.filterwarnings("ignore")
-from utils.ema import EMA
 
 
 def train(model, device, train_loader, optimizer, epoch):
@@ -181,7 +174,7 @@ if __name__ == '__main__':
 
     # focal loss and optimizer
     loss_weight = 0.001
-    center_focal = FocalLoss(alpha=0.75, reduction='mean')
+    center_focal = FocalLoss(alpha=0.5, reduction='mean')
     optimzer_focal = torch.optim.SGD(center_focal.parameters(), lr=model_lr)
     model_ft = create_model(model_name)
 

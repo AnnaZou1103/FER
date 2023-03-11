@@ -1,7 +1,6 @@
 import json
 import matplotlib.pyplot as plt
 import torch
-import torch.nn as nn
 import torch.nn.parallel
 import torch.optim as optim
 import torch.utils.data
@@ -13,14 +12,13 @@ from timm.data.mixup import Mixup
 from timm.loss import SoftTargetCrossEntropy
 from torchvision import datasets
 
-from blocks.model import create_model
-from utils.util import make_dir
+from model import create_model
+from util import make_dir, EMA
 
 torch.backends.cudnn.benchmark = False
 import warnings
 
 warnings.filterwarnings("ignore")
-from utils.ema import EMA
 
 
 def train(model, device, train_loader, optimizer, epoch):

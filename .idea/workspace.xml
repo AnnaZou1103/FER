@@ -5,10 +5,19 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="8d2b7db6-b2a6-456e-91d0-491116496d9e" name="Changes" comment="update">
-      <change afterPath="$PROJECT_DIR$/test/interface.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/main.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/test/test_video.py" beforeDir="false" afterPath="$PROJECT_DIR$/test/process_file.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/blocks/cbam_block.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/blocks/loss.py" beforeDir="false" afterPath="$PROJECT_DIR$/train/loss.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/blocks/model.py" beforeDir="false" afterPath="$PROJECT_DIR$/train/model.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/blocks/se_block.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/blocks/swin.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/test/test.py" beforeDir="false" afterPath="$PROJECT_DIR$/test/test.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/test/test_multiface.py" beforeDir="false" afterPath="$PROJECT_DIR$/test/test_multiface.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/train/train.py" beforeDir="false" afterPath="$PROJECT_DIR$/train/train.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/train/train_center.py" beforeDir="false" afterPath="$PROJECT_DIR$/train/train_center.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/train/train_focal.py" beforeDir="false" afterPath="$PROJECT_DIR$/train/train_focal.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/utils/ema.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/utils/util.py" beforeDir="false" afterPath="$PROJECT_DIR$/train/util.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -60,14 +69,14 @@
       <recent name="$PROJECT_DIR$" />
     </key>
     <key name="MoveFile.RECENT_KEYS">
+      <recent name="$PROJECT_DIR$/train" />
       <recent name="$PROJECT_DIR$/test" />
       <recent name="$PROJECT_DIR$/dataset" />
       <recent name="$PROJECT_DIR$/dataset/original" />
       <recent name="$PROJECT_DIR$/block" />
-      <recent name="$PROJECT_DIR$" />
     </key>
   </component>
-  <component name="RunManager" selected="Python.interface">
+  <component name="RunManager" selected="Python.test_multiface">
     <configuration name="interface" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
       <module name="my_code" />
       <option name="INTERPRETER_OPTIONS" value="" />
@@ -112,28 +121,6 @@
       <option name="INPUT_FILE" value="" />
       <method v="2" />
     </configuration>
-    <configuration name="split_and_refined" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
-      <module name="my_code" />
-      <option name="INTERPRETER_OPTIONS" value="" />
-      <option name="PARENT_ENVS" value="true" />
-      <envs>
-        <env name="PYTHONUNBUFFERED" value="1" />
-      </envs>
-      <option name="SDK_HOME" value="" />
-      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/preprocess" />
-      <option name="IS_MODULE_SDK" value="true" />
-      <option name="ADD_CONTENT_ROOTS" value="true" />
-      <option name="ADD_SOURCE_ROOTS" value="true" />
-      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
-      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/preprocess/split_and_refined.py" />
-      <option name="PARAMETERS" value="" />
-      <option name="SHOW_COMMAND_LINE" value="false" />
-      <option name="EMULATE_TERMINAL" value="false" />
-      <option name="MODULE_MODE" value="false" />
-      <option name="REDIRECT_INPUT" value="false" />
-      <option name="INPUT_FILE" value="" />
-      <method v="2" />
-    </configuration>
     <configuration name="test_image" type="PythonConfigurationType" factoryName="Python" nameIsGenerated="true">
       <module name="my_code" />
       <option name="INTERPRETER_OPTIONS" value="" />
@@ -148,6 +135,28 @@
       <option name="ADD_SOURCE_ROOTS" value="true" />
       <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
       <option name="SCRIPT_NAME" value="$PROJECT_DIR$/test/test_image.py" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
+    <configuration name="test_multiface" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
+      <module name="my_code" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/test" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/test/test_multiface.py" />
       <option name="PARAMETERS" value="" />
       <option name="SHOW_COMMAND_LINE" value="false" />
       <option name="EMULATE_TERMINAL" value="false" />
@@ -201,20 +210,20 @@
       <method v="2" />
     </configuration>
     <list>
-      <item itemvalue="Python.split_and_refined" />
+      <item itemvalue="Python.test_image" />
       <item itemvalue="Python.train" />
       <item itemvalue="Python.test_real_time" />
       <item itemvalue="Python.interface" />
-      <item itemvalue="Python.test_image" />
       <item itemvalue="Python.process_file" />
+      <item itemvalue="Python.test_multiface" />
     </list>
     <recent_temporary>
       <list>
+        <item itemvalue="Python.test_multiface" />
         <item itemvalue="Python.interface" />
         <item itemvalue="Python.process_file" />
         <item itemvalue="Python.test_real_time" />
         <item itemvalue="Python.train" />
-        <item itemvalue="Python.split_and_refined" />
       </list>
     </recent_temporary>
   </component>
@@ -247,7 +256,10 @@
       <workItem from="1678063341848" duration="3953000" />
       <workItem from="1678147382644" duration="4847000" />
       <workItem from="1678234832600" duration="39456000" />
-      <workItem from="1678323179711" duration="12234000" />
+      <workItem from="1678323179711" duration="23321000" />
+      <workItem from="1678409315608" duration="2797000" />
+      <workItem from="1678415812284" duration="4073000" />
+      <workItem from="1678497025580" duration="1759000" />
     </task>
     <task id="LOCAL-00001" summary="update">
       <created>1678005001264</created>
@@ -282,13 +294,23 @@
     <breakpoint-manager>
       <breakpoints>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/blocks/se_block.py</url>
-          <option name="timeStamp" value="1" />
+          <url>file://$PROJECT_DIR$/test/interface.py</url>
+          <line>12</line>
+          <option name="timeStamp" value="3" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/test/interface.py</url>
-          <line>13</line>
-          <option name="timeStamp" value="3" />
+          <url>file://$PROJECT_DIR$/test/test_multiface.py</url>
+          <line>41</line>
+          <option name="timeStamp" value="4" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/train/train_se.py</url>
+          <option name="timeStamp" value="5" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/train/train_se.py</url>
+          <line>79</line>
+          <option name="timeStamp" value="6" />
         </line-breakpoint>
       </breakpoints>
     </breakpoint-manager>
@@ -300,6 +322,7 @@
     <SUITE FILE_PATH="coverage/main_py$interface.coverage" NAME="interface Coverage Results" MODIFIED="1678333901423" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/fer_refined_py$main.coverage" NAME="main Coverage Results" MODIFIED="1668336397402" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/main_py$test_real_time.coverage" NAME="test_real_time Coverage Results" MODIFIED="1678292402099" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/test" />
+    <SUITE FILE_PATH="coverage/main_py$test_multiface.coverage" NAME="test_multiface Coverage Results" MODIFIED="1678458075381" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/test" />
     <SUITE FILE_PATH="coverage/img2h5_py$kdef2h5.coverage" NAME="kdef2h5 Coverage Results" MODIFIED="1668150251875" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/main_py$test.coverage" NAME="test Coverage Results" MODIFIED="1677935504913" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/test" />
     <SUITE FILE_PATH="coverage/main_py$RAFDB.coverage" NAME="RAFDB Coverage Results" MODIFIED="1678245779167" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/preprocess" />
