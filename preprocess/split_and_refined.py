@@ -59,19 +59,11 @@ def detect_face(img, file_class):
         shutil.copy(img, file_class + '/' + img.split('/')[1])
         return 1
     else:
-        # for idx, face in enumerate(faces):
-        # if len(face[0]) <= 10 or len(face[1]) <= 10:
-        #     continue
-        # cv2.imwrite(file_class + '/' + str(idx) + '_' + img.split('/')[1], face[:, :, ::-1])
-        # break
-        max_image_size = 0
         for idx, face in enumerate(faces):
-            h = len(face[0])
-            w = len(face[1])
-            if max_image_size < h * w:
-                max_image_size = h * w
-                index = idx
-        cv2.imwrite(file_class + '/' + img.split('/')[-1], faces[index][:, :, ::-1])
+            if len(face[0]) <= 10 or len(face[1]) <= 10:
+                continue
+            cv2.imwrite(file_class + '/' + str(idx) + '_' + img.split('/')[1], face[:, :, ::-1])
+            break
         return 0
 
 

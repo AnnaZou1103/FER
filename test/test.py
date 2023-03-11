@@ -9,6 +9,45 @@ from mlxtend.plotting import plot_confusion_matrix
 import matplotlib.pyplot as plt
 import numpy as np
 import torch.nn as nn
+import torch.utils.checkpoint as checkpoint
+
+class SELayer(nn.Module):
+    def __init__(self, channel, reduction=4):
+        super(SELayer, self).__init__()
+        self.avg_pool = nn.AdaptiveAvgPool1d(1)
+        self.fc = nn.Sequential(
+            nn.Linear(channel, channel // reduction, bias=False),
+            nn.ReLU(inplace=True),
+            nn.Linear(channel // reduction, channel, bias=False),
+            nn.Sigmoid()
+        )
+
+    def forward(self, x):  # x: [B, N, C]
+        x = torch.transpose(x, 1, 2)  # [B, C, N]
+        b, c, _ = x.size()
+        y = self.avg_pool(x).view(b, c)
+        y = self.fc(y).view(b, c, 1)
+        x = x * y.expand_as(x)
+        x = torch.transpose(x, 1, 2)  # [B, N, C]
+        return x
+
+
+class BasicLayerSE(nn.Module):
+    def __init__(self, dim, layer):
+        super(BasicLayerSE, self).__init__()
+        self.layer = layer
+        self.se_layer = SELayer(dim)
+
+    def forward(self, x):
+        for blk in self.layer.blocks:
+            if self.layer.grad_checkpointing and not torch.jit.is_scripting():
+                x = checkpoint.checkpoint(blk, x)
+            else:
+                x = blk(x)
+        x = self.se_layer(x)
+        x = self.layer.downsample(x)
+        return x
+
 
 class Swin(nn.Module):
     def __init__(self, swin):

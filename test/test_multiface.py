@@ -69,4 +69,5 @@ if __name__ == '__main__':
         if count == num:
             correct_image += 1
     print('Total faces: ' + str(total_face))
+    print('Total image: ' + str(len(testList)))
     print('Match ratio: ' + str(correct_image / len(testList)), 'Accuracy: ' + str(correct_face / total_face))
