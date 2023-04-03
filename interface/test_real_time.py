@@ -1,45 +1,18 @@
-import torch
 from PIL import Image
 from retinaface import RetinaFace
 import cv2
 import time
 import numpy as np
-import torchvision.transforms as transforms
-from torch.autograd import Variable
-
-
-def fer(img):
-    emotion = ['surprise', 'fear', 'disgust', 'happiness', 'sadness', 'anger', 'neutral']
-    transform_test = transforms.Compose([
-        transforms.Resize((256, 256)),
-        transforms.ToTensor(),
-        transforms.Normalize(
-            mean=[0.535038, 0.41776547, 0.37159777],
-            std=[0.24516706, 0.21566056, 0.20260763])
-    ])
-
-    img = transform_test(img)
-    img.unsqueeze_(0)
-    img = Variable(img).to(DEVICE)
-    out = model(img)
-    _, pred = torch.max(out.data, 1)
-    return emotion[pred.data.item()]
-
+from process_file import fer
 
 if __name__ == "__main__":
-    DEVICE = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-    model = torch.load('../checkpoints/pretrain/best.pth')
-
-    model.eval()
-    model.to(DEVICE)
-
-    capture = cv2.VideoCapture(0)
+    capture = cv2.VideoCapture(0) # Open camera
     ref, frame = capture.read()
     if not ref:
         raise ValueError("Cannot open the camera.")
 
     fps = 0.0
-    while (True):
+    while True:
         t1 = time.time()
         ref, frame = capture.read()
         if not ref:
@@ -72,6 +45,7 @@ if __name__ == "__main__":
         if c == 27:
             capture.release()
             break
+
     print("Done!")
     capture.release()
     cv2.destroyAllWindows()

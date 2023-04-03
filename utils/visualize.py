@@ -5,15 +5,7 @@ import numpy as np
 import torch
 from pytorch_grad_cam.utils.model_targets import ClassifierOutputTarget
 
-from pytorch_grad_cam import GradCAM, \
-    ScoreCAM, \
-    GradCAMPlusPlus, \
-    AblationCAM, \
-    XGradCAM, \
-    EigenCAM, \
-    EigenGradCAM, \
-    LayerCAM, \
-    FullGrad
+from pytorch_grad_cam import GradCAM
 
 from pytorch_grad_cam.utils.image import show_cam_on_image, \
     preprocess_image
@@ -27,7 +19,7 @@ def get_args():
     parser.add_argument(
         '--image-path',
         type=str,
-        default='../RAFDBAligned/test/7/test_2404_aligned.jpg',
+        default='../dataset/image.png',
         help='Input image path')
     parser.add_argument('--aug_smooth', action='store_true',
                         help='Apply test time augmentation to smooth the CAM')
@@ -57,16 +49,13 @@ def reshape_transform(tensor, height=8, width=8):
     result = tensor.reshape(tensor.size(0),
                             height, width, tensor.size(2))
 
-    # Bring the channels to the first dimension,
-    # like in CNNs.
+    # Bring the channels to the first dimension, like in CNNs.
     result = result.transpose(2, 3).transpose(1, 2)
     return result
 
 
 if __name__ == '__main__':
-    """ python swinT_example.py -image-path <path_to_image>
-    Example usage of using cam-methods on a SwinTransformers network.
-
+    """ python vosualize.py --image-path <path_to_image> 
     """
 
     args = get_args()
@@ -84,7 +73,7 @@ if __name__ == '__main__':
     if args.method not in list(methods.keys()):
         raise Exception(f"method should be one of {list(methods.keys())}")
 
-    model = torch.load('../checkpoints/retina/best.pth')
+    model = torch.load('../checkpoints/retina_base/best.pth')
 
     model.eval()
 
@@ -111,22 +100,18 @@ if __name__ == '__main__':
     rgb_img = cv2.imread(args.image_path, 1)[:, :, ::-1]
     rgb_img = cv2.resize(rgb_img, (256, 256))
     rgb_img = np.float32(rgb_img) / 255
-    input_tensor = preprocess_image(rgb_img, mean=[0.57587653, 0.4499575, 0.40141416], std=[0.2082354, 0.1908959, 0.18240552])
+    input_tensor = preprocess_image(rgb_img, mean=[0.536219, 0.41908908, 0.37291506], std=[0.24627768, 0.21669856, 0.20367864])
 
     class_map = {0: 'surprise', 1: 'fear', 2: 'disgust', 3: 'happiness', 4: 'sadness', 5: 'anger', 6: 'neutral'}
     class_id = 6
     class_name = class_map[class_id]
-    # AblationCAM and ScoreCAM have batched implementations.
-    # You can override the internal batch size for faster computation.
-    # cam.batch_size = 32
 
     grayscale_cam = cam(input_tensor=input_tensor,
                         targets=[ClassifierOutputTarget(class_id)],
                         eigen_smooth=args.eigen_smooth,
                         aug_smooth=args.aug_smooth)
 
-    # Here grayscale_cam has only one image in the batch
     grayscale_cam = grayscale_cam[0, :]
 
     cam_image = show_cam_on_image(rgb_img, grayscale_cam)
-    cv2.imwrite(f'../output/{args.method}_cam.jpg', cam_image)
+    cv2.imwrite('../output/processed_media/cam.jpg', cam_image)

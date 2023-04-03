@@ -12,8 +12,7 @@ def fer(img):
         transforms.Resize((256, 256)),
         transforms.ToTensor(),
         transforms.Normalize(
-            mean=[0.535038, 0.41776547, 0.37159777],
-            std=[0.24516706, 0.21566056, 0.20260763])
+            mean=[0.536219, 0.41908908, 0.37291506], std=[0.24627768, 0.21669856, 0.20367864])
     ])
 
     img = transform_test(img)

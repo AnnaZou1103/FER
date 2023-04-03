@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.utils.checkpoint as checkpoint
-from timm.models.swin_transformer_v2 import swinv2_base_window16_256
+from timm.models.swin_transformer_v2 import swinv2_small_window16_256
 
 
 # CBAM
@@ -240,7 +240,7 @@ class BasicLayerSE(nn.Module):
 
 
 # contrastive learning
-class Swin(nn.Module):
+class CustomizedSwin(nn.Module):
     def __init__(self, swin):
         super().__init__()
         self.swin = swin
@@ -255,7 +255,7 @@ class Swin(nn.Module):
 
 
 def create_model(model_name='base', class_num=7):
-    model = swinv2_base_window16_256(pretrained=True)
+    model = swinv2_small_window16_256(pretrained=True)
     if model_name == 'base' or model_name == 'focal':
         num_ftrs = model.head.in_features
         model.head = nn.Linear(num_ftrs, class_num)
@@ -276,5 +276,5 @@ def create_model(model_name='base', class_num=7):
         num_ftrs = model.head.in_features
         model.head = nn.Linear(num_ftrs, class_num)
     elif model_name == 'center' or model_name == 'supcon':
-        model = Swin(swinv2_base_window16_256(pretrained=True))
+        model = CustomizedSwin(swinv2_small_window16_256(pretrained=True))
     return model

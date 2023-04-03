@@ -1,7 +1,8 @@
 import os
 import shutil
 
-class EMA():
+
+class EMA:
     def __init__(self, model, decay):
         self.model = model
         self.decay = decay
@@ -33,6 +34,7 @@ class EMA():
                 assert name in self.backup
                 param.data = self.backup[name]
         self.backup = {}
+
 
 class TwoCropTransform:
     """Create two crops of the same image"""

@@ -11,7 +11,6 @@ from sklearn.metrics import classification_report
 from timm.data.mixup import Mixup
 from timm.loss import SoftTargetCrossEntropy
 from torchvision import datasets
-
 from model import create_model
 from util import make_dir, EMA
 
@@ -149,13 +148,13 @@ if __name__ == '__main__':
         transforms.ColorJitter(brightness=0.5, contrast=0.5, saturation=0.5),
         transforms.Resize((256, 256)),
         transforms.ToTensor(),
-        transforms.Normalize(mean=[0.5916177, 0.54559606, 0.52381414], std=[0.2983136, 0.3015795, 0.30528155]),
+        transforms.Normalize(mean=[0.536219, 0.41908908, 0.37291506], std=[0.24627768, 0.21669856, 0.20367864]),
     ])
 
     transform_test = transforms.Compose([
         transforms.Resize((img_size, img_size)),
         transforms.ToTensor(),
-        transforms.Normalize([0.5916177, 0.54559606, 0.52381414], std=[0.2983136, 0.3015795, 0.30528155])
+        transforms.Normalize(mean=[0.536219, 0.41908908, 0.37291506], std=[0.24627768, 0.21669856, 0.20367864])
     ])
 
     mixup_fn = Mixup(

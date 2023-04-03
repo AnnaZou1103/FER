@@ -1,8 +1,6 @@
 import torch
-import torch.nn as nn
 from retinaface import RetinaFace
 import torchvision.transforms as transforms
-from timm.models import swinv2_base_window16_256
 from torch.autograd import Variable
 import cv2
 from PIL import Image
@@ -10,10 +8,23 @@ import time
 import numpy as np
 import math
 
+model_path = 'checkpoints/retina_small/best.pth'  # The path to the stored model
 DEVICE = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+MODEL = torch.load(model_path, map_location=DEVICE)
+MODEL.eval()
+MODEL.to(DEVICE)
+
+# from timm.models import swinv2_small_window16_256
+# import torch.nn as nn
+#
+# MODEL = swinv2_small_window16_256(pretrained=True)
+# num_ftrs = MODEL.head.in_features
+# MODEL.head = nn.Linear(num_ftrs, 7)
+# MODEL.eval()
+# MODEL.to(DEVICE)
 
 
-def findEuclideanDistance(source_representation, test_representation):
+def find_euclidean_distance(source_representation, test_representation):
     euclidean_distance = source_representation - test_representation
     euclidean_distance = np.sum(np.multiply(euclidean_distance, euclidean_distance))
     euclidean_distance = np.sqrt(euclidean_distance)
@@ -39,9 +50,9 @@ def alignment_procedure(img, left_eye, right_eye, nose):
         point_3rd = (left_eye_x, right_eye_y)
         direction = 1  # rotate inverse direction of clock
 
-    a = findEuclideanDistance(np.array(left_eye), np.array(point_3rd))
-    b = findEuclideanDistance(np.array(right_eye), np.array(point_3rd))
-    c = findEuclideanDistance(np.array(right_eye), np.array(left_eye))
+    a = find_euclidean_distance(np.array(left_eye), np.array(point_3rd))
+    b = find_euclidean_distance(np.array(right_eye), np.array(point_3rd))
+    c = find_euclidean_distance(np.array(right_eye), np.array(left_eye))
 
     if b != 0 and c != 0:  # this multiplication causes division by zero in cos_a calculation
 
@@ -65,25 +76,25 @@ def alignment_procedure(img, left_eye, right_eye, nose):
     return img
 
 
-def fer(img, model):
+def fer(img):
     emotion = ['surprise', 'fear', 'disgust', 'happiness', 'sadness', 'anger', 'neutral']
     transform_test = transforms.Compose([
         transforms.Resize((256, 256)),
         transforms.ToTensor(),
         transforms.Normalize(
-            mean=[0.535038, 0.41776547, 0.37159777],
-            std=[0.24516706, 0.21566056, 0.20260763])
+            mean=[0.536219, 0.41908908, 0.37291506],
+            std=[0.24627768, 0.21669856, 0.20367864])
     ])
 
     img = transform_test(img)
     img.unsqueeze_(0)
     img = Variable(img).to(DEVICE)
-    out = model(img)
+    out = MODEL(img)
     _, pred = torch.max(out.data, 1)
     return emotion[pred.data.item()]
 
 
-def detect_face(image, model):
+def detect_face(image):
     results = RetinaFace.detect_faces(image)
     if type(results) == dict:
         for key in results:
@@ -102,7 +113,7 @@ def detect_face(image, model):
                 nose = landmarks["nose"]
                 facial_img = alignment_procedure(facial_img, right_eye, left_eye, nose)
 
-                label = fer(Image.fromarray(facial_img), model)
+                label = fer(Image.fromarray(facial_img))
                 cv2.rectangle(image, (facial_area[0], facial_area[1]),
                               (facial_area[0] + w, facial_area[1] + h), (36, 255, 12), 1)
                 cv2.putText(image, label, (facial_area[0], facial_area[1] - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.9,
@@ -110,33 +121,30 @@ def detect_face(image, model):
     return image
 
 
-def process_file(model_path, file_path, save_path, type='Video'):
-    model = torch.load(model_path)
-
-    model.eval()
-    model.to(DEVICE)
-
-    capture = cv2.VideoCapture(file_path)
-    frame_count = int(capture.get(cv2.CAP_PROP_FRAME_COUNT))
-    frame_rate = capture.get(cv2.CAP_PROP_FPS)
-    frame_width = int(capture.get(cv2.CAP_PROP_FRAME_WIDTH))
-    frame_height = int(capture.get(cv2.CAP_PROP_FRAME_HEIGHT))
-
+def process_file(file_path, save_path, input_type='Video'):
     start = time.time()
-    if type == 'Video':
+    if input_type == 'Video':
+        capture = cv2.VideoCapture(file_path)
+        frame_count = int(capture.get(cv2.CAP_PROP_FRAME_COUNT))
+        frame_rate = capture.get(cv2.CAP_PROP_FPS)
+        frame_width = int(capture.get(cv2.CAP_PROP_FRAME_WIDTH))
+        frame_height = int(capture.get(cv2.CAP_PROP_FRAME_HEIGHT))
         out = cv2.VideoWriter(save_path + file_path.split('/')[-1], cv2.VideoWriter_fourcc(*'mp4v'), frame_rate,
                               (frame_width, frame_height))
         while capture.isOpened():
             rval, frame = capture.read()
             if rval:
-                frame = detect_face(frame, model)
+                frame = detect_face(frame)
                 out.write(frame)
             else:
                 break
-    elif type == 'Image':
+
+        print('Total frame number: ' + str(frame_count))
+    elif input_type == 'Image':
         img = cv2.imread(file_path)
-        img = detect_face(img, model)
+        img = detect_face(img)
         cv2.imwrite(save_path + file_path.split('/')[-1], img)
+        print(save_path + file_path.split('/')[-1])
 
     end = time.time()
     seconds = end - start
@@ -144,5 +152,10 @@ def process_file(model_path, file_path, save_path, type='Video'):
     minute = int(seconds % 3600 / 60)
     second = int(seconds % 60)
 
-    print('Total frame number: ' + str(frame_count))
     print('Process completed in ' + str(hour) + 'h ' + str(minute) + "m " + str(second) + 's. ')
+
+
+if __name__ == '__main__':
+    file_path = '../dataset/video.mp4'
+    save_path = '../output/processed_media/'
+    process_file(file_path, save_path, input_type='Video')

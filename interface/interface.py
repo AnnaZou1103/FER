@@ -5,6 +5,7 @@ import os
 from process_file import process_file
 
 
+# Set process function of each button
 def set_image():
     entry_upload_path['state'] = 'normal'
     btn_upload['state'] = 'normal'
@@ -26,10 +27,8 @@ def select_save_path():
 
 
 def process():
-    model_path = 'checkpoints/pretrain/best.pth'
-
     start = time.time()
-    process_file(model_path, upload_path.get(), save_path.get(), input_type.get())
+    process_file(upload_path.get(), save_path.get(), input_type.get())
     end = time.time()
     seconds = end - start
 
@@ -57,12 +56,13 @@ if __name__ == '__main__':
 
     sw = window.winfo_screenwidth()
     sh = window.winfo_screenheight()
-    ww = 650
-    wh = 210
+    ww = 650  # Set window width
+    wh = 210  # Set window height
     x = int((sw - ww) / 2)
     y = int((sh - wh) / 2)
     window.geometry(f"{ww}x{wh}+{x}+{y}")
 
+    # Set input type
     input_type = tk.StringVar()
     label_input = tk.Label(window, font=('Arial', 14), text='Please select the input type:')
     label_input.place(x=10, y=10)
@@ -76,6 +76,7 @@ if __name__ == '__main__':
                                    command=set_video)
     r_btn_input_2.place(x=350, y=10)
 
+    # Set upload path
     upload_path = tk.StringVar()
     label_upload = tk.Label(window, text="Input Path:", font=('Arial', 14))
     label_upload.place(x=10, y=60)
@@ -84,6 +85,7 @@ if __name__ == '__main__':
     btn_upload = tk.Button(window, text="Open", font=('Arial', 14), width=10, command=set_upload_path)
     btn_upload.place(x=480, y=60)
 
+    # Set output path
     default_save_path = 'output/processed_media/'
     tk.Label(window, text='Save Path:', font=('Arial', 14)).place(x=10, y=110)
     if not os.path.exists(default_save_path):
@@ -95,6 +97,7 @@ if __name__ == '__main__':
     btn_save = tk.Button(window, text="Open", font=('Arial', 14), width=10, command=select_save_path)
     btn_save.place(x=480, y=110)
 
+    # Set buttons
     btn_process = tk.Button(window, font=('Arial', 14), text="Execute", width=10, command=process)
     btn_process.place(x=180, y=160)
 

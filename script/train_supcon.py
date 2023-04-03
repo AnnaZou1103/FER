@@ -21,6 +21,7 @@ import warnings
 
 warnings.filterwarnings("ignore")
 
+
 def train(model, device, train_loader, optimizer, epoch):
     model.train()
 
@@ -34,13 +35,13 @@ def train(model, device, train_loader, optimizer, epoch):
         data, target = data.to(device, non_blocking=True), target.to(device, non_blocking=True)
         samples, targets = mixup_fn(data, target)
         feats, output = model(samples)
-        output = output[ : target.shape[0]]
+        output = output[: target.shape[0]]
         f1, f2 = torch.split(feats, [target.shape[0], target.shape[0]], dim=0)
         features = torch.cat([f1.unsqueeze(1), f2.unsqueeze(1)], dim=1)
         optimizer.zero_grad()
         if use_amp:
             with torch.cuda.amp.autocast():
-                loss = criterion_train(output, targets) + contra_criterion(features, target)*loss_weight
+                loss = criterion_train(output, targets) + contra_criterion(features, target) * loss_weight
             scaler.scale(loss).backward()
             torch.nn.utils.clip_grad_norm_(model.parameters(), CLIP_GRAD)
             # Unscales gradients and calls
@@ -51,7 +52,7 @@ def train(model, device, train_loader, optimizer, epoch):
             if use_ema and epoch % ema_epoch == 0:
                 ema.update()
         else:
-            loss = criterion_train(output, targets)+contra_criterion(features, target)*loss_weight
+            loss = criterion_train(output, targets) + contra_criterion(features, target) * loss_weight
             loss.backward()
             # torch.nn.utils.clip_grad_norm_(train.parameters(), CLIP_GRAD)
             optimizer.step()
@@ -93,7 +94,7 @@ def val(model, device, val_loader):
             val_list.append(t.data.item())
         data, target = data.to(device, non_blocking=True), target.to(device, non_blocking=True)
         feats, output = model(data)
-        loss = criterion_val(output, target)
+        loss = criterion_val(output, target) + contra_criterion(feats, target) * loss_weight
         _, pred = torch.max(output.data, 1)
         for p in pred:
             pred_list.append(p.data.item())
@@ -106,7 +107,7 @@ def val(model, device, val_loader):
     acc = acc1_meter.avg
     print('\nVal set: Average loss: {:.4f}\tAcc1:{:.3f}%\tAcc5:{:.3f}%\n'.format(
         loss_meter.avg, acc, acc5_meter.avg))
-    if acc > Best_ACC :
+    if acc > Best_ACC:
         if isinstance(model, torch.nn.DataParallel):
             torch.save(model.module, file_dir + "/" + 'model_' + str(epoch) + '_' + str(round(acc, 3)) + '.pth')
             torch.save(model.module, file_dir + '/' + 'best.pth')
@@ -115,6 +116,7 @@ def val(model, device, val_loader):
             torch.save(model, file_dir + '/' + 'best.pth')
         Best_ACC = acc
     return val_list, pred_list, loss_meter.avg, acc
+
 
 if __name__ == '__main__':
     file_dir = '../checkpoints/retina_supcon'
@@ -147,13 +149,13 @@ if __name__ == '__main__':
         transforms.ColorJitter(brightness=0.5, contrast=0.5, saturation=0.5),
         transforms.Resize((256, 256)),
         transforms.ToTensor(),
-        transforms.Normalize(mean=[0.5916177, 0.54559606, 0.52381414], std=[0.2983136, 0.3015795, 0.30528155]),
+        transforms.Normalize(mean=[0.536219, 0.41908908, 0.37291506], std=[0.24627768, 0.21669856, 0.20367864]),
     ])
 
     transform_test = transforms.Compose([
         transforms.Resize((img_size, img_size)),
         transforms.ToTensor(),
-        transforms.Normalize([0.5916177, 0.54559606, 0.52381414], std=[0.2983136, 0.3015795, 0.30528155])
+        transforms.Normalize(mean=[0.536219, 0.41908908, 0.37291506], std=[0.24627768, 0.21669856, 0.20367864])
     ])
 
     mixup_fn = Mixup(

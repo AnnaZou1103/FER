@@ -10,9 +10,9 @@ from timm.utils import accuracy, AverageMeter
 from sklearn.metrics import classification_report
 from timm.data.mixup import Mixup
 from timm.loss import SoftTargetCrossEntropy
-from kornia.losses.focal import FocalLoss
 from torchvision import datasets
 
+from loss import CenterLoss
 from model import create_model
 from util import make_dir, EMA
 
@@ -39,11 +39,12 @@ def train(model, device, train_loader, optimizer, epoch):
             print(len(data))
         data, target = data.to(device, non_blocking=True), target.to(device, non_blocking=True)
         samples, targets = mixup_fn(data, target)
-        output = model(samples)
+        feats, output = model(samples)
         optimizer.zero_grad()
         if use_amp:
             with torch.cuda.amp.autocast():
-                loss = criterion_train(output, targets) + loss_weight * center_focal(output, target)
+                loss = criterion_train(output, targets) + loss_weight * center_loss(feats, target)
+            optimzer_center.zero_grad()
             scaler.scale(loss).backward()
             torch.nn.utils.clip_grad_norm_(model.parameters(), CLIP_GRAD)
             # Unscales gradients and calls
@@ -51,15 +52,22 @@ def train(model, device, train_loader, optimizer, epoch):
             scaler.step(optimizer)
             # Updates the scale for next iteration
             scaler.update()
+
             if use_ema and epoch % ema_epoch == 0:
                 ema.update()
         else:
-            loss = criterion_train(output, targets) + loss_weight * center_focal(output, target)
+            loss = criterion_train(output, targets) + loss_weight * center_loss(feats, target)
+            optimzer_center.zero_grad()
             loss.backward()
             # torch.nn.utils.clip_grad_norm_(train.parameters(), CLIP_GRAD)
             optimizer.step()
             if use_ema and epoch % ema_epoch == 0:
                 ema.update()
+
+        for param in center_loss.parameters():
+            param.grad.data *= (1. / loss_weight)
+        optimzer_center.step()
+
         torch.cuda.synchronize()
         lr = optimizer.state_dict()['param_groups'][0]['lr']
         loss_meter.update(loss.item(), target.size(0))
@@ -94,8 +102,8 @@ def val(model, device, val_loader):
         for t in target:
             val_list.append(t.data.item())
         data, target = data.to(device, non_blocking=True), target.to(device, non_blocking=True)
-        output = model(data)
-        loss = criterion_val(output, target)
+        feats, output = model(data)
+        loss = criterion_val(output, target) + loss_weight * center_loss(feats, target)
         _, pred = torch.max(output.data, 1)
         for p in pred:
             pred_list.append(p.data.item())
@@ -118,11 +126,12 @@ def val(model, device, val_loader):
         Best_ACC = acc
     return val_list, pred_list, loss_meter.avg, acc
 
+
 if __name__ == '__main__':
-    file_dir = '../checkpoints/retina_focal'
+    file_dir = '../checkpoints/retina_center'
     trainset_path = '../dataset/RAFDBRefined/train'
     valset_path = '../dataset/RAFDBRefined/val'
-    model_name = 'focal'
+    model_name = 'center'
     make_dir(file_dir)
 
     # set parameters
@@ -137,9 +146,9 @@ if __name__ == '__main__':
     class_num = 7
     resume = False
     CLIP_GRAD = 5.0
-    model_path = '../checkpoints/retina_focal_FER/best.pth'
+    model_path = '../checkpoints/retina_center_FER/best.pth'
     Best_ACC = 0
-    use_ema = False
+    use_ema = True
     ema_epoch = 32
 
     transform = transforms.Compose([
@@ -149,13 +158,13 @@ if __name__ == '__main__':
         transforms.ColorJitter(brightness=0.5, contrast=0.5, saturation=0.5),
         transforms.Resize((256, 256)),
         transforms.ToTensor(),
-        transforms.Normalize(mean=[0.5916177, 0.54559606, 0.52381414], std=[0.2983136, 0.3015795, 0.30528155]),
+        transforms.Normalize(mean=[0.536219, 0.41908908, 0.37291506], std=[0.24627768, 0.21669856, 0.20367864]),
     ])
 
     transform_test = transforms.Compose([
         transforms.Resize((img_size, img_size)),
         transforms.ToTensor(),
-        transforms.Normalize([0.5916177, 0.54559606, 0.52381414], std=[0.2983136, 0.3015795, 0.30528155])
+        transforms.Normalize(mean=[0.536219, 0.41908908, 0.37291506], std=[0.24627768, 0.21669856, 0.20367864])
     ])
 
     mixup_fn = Mixup(
@@ -169,14 +178,16 @@ if __name__ == '__main__':
     train_loader = torch.utils.data.DataLoader(dataset_train, batch_size=BATCH_SIZE, shuffle=True)
     val_loader = torch.utils.data.DataLoader(dataset_test, batch_size=BATCH_SIZE, shuffle=False)
 
+    model_ft = create_model(model_name)
+    num_ftrs = model_ft.head.in_features
+
     criterion_train = SoftTargetCrossEntropy()
     criterion_val = torch.nn.CrossEntropyLoss()
 
-    # focal loss and optimizer
-    loss_weight = 0.001
-    center_focal = FocalLoss(alpha=0.5, reduction='mean')
-    optimzer_focal = torch.optim.SGD(center_focal.parameters(), lr=model_lr)
-    model_ft = create_model(model_name)
+    # center loss and optimizer
+    loss_weight = 0.0001
+    center_loss = CenterLoss(num_classes=class_num, feat_dim=num_ftrs, use_gpu=True)
+    optimzer_center = torch.optim.SGD(center_loss.parameters(), lr=model_lr)
 
     if resume:
         model_ft = torch.load(model_path)

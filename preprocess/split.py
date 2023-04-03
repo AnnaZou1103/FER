@@ -18,7 +18,7 @@ def split_data(dataset_dir, files, set_name='/train/'):
     for img in files:
         idx += 1
         if idx % 100 == 0:
-            print(idx)
+            print(f'Image number: {idx}')
 
         img_number = int(img.split('/')[-1].split('_')[1].split('.')[0])
         file_class = labels[img_number - 1][-2]
@@ -31,18 +31,19 @@ def split_data(dataset_dir, files, set_name='/train/'):
 
 
 if __name__ == '__main__':
-    file_dir = '../dataset/RAFDBAligned'
-    image_list = glob.glob('../dataset/original/RAFDBAligned/train_*.jpg')
+    out_dir = '../dataset/RAFDBAligned'  # The path to the folder storing the spilt dataset
+    image_list = glob.glob(
+        '../dataset/RAFDB/aligned/train_*.jpg')  # The path to the folder storing the original training set
 
-    label_file = open('../dataset/original/list_patition_label.txt', 'r')
+    label_file = open('../dataset/RAFDB/list_patition_label.txt', 'r')
     labels = label_file.readlines()
 
-    make_dir(file_dir)
+    make_dir(out_dir)
 
     train_files, val_files = train_test_split(image_list, test_size=0.2, random_state=42)
 
-    test_files = glob.glob('../dataset/original/RAFDBAligned/test_*.jpg')
+    test_files = glob.glob('../dataset/RAFDB/aligned/test_*.jpg') # The path to the folder storing the original test set
 
-    split_data(file_dir, train_files, set_name='/train/')
-    split_data(file_dir, val_files, set_name='/val/')
-    split_data(file_dir, test_files, set_name='/test/')
+    split_data(out_dir, train_files, set_name='/train/')
+    split_data(out_dir, val_files, set_name='/val/')
+    split_data(out_dir, test_files, set_name='/test/')
