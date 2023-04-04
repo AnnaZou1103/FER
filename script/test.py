@@ -29,7 +29,7 @@ def fer(image, file, contrastive=False):
     if not contrastive:
         out = model(image)
     else:
-        out,feats = model(image)
+        out, feats = model(image)
     _, pred = torch.max(out.data, 1)
 
     result[int(file_class) - 1][pred.data.item()] += 1
@@ -41,7 +41,7 @@ if __name__ == '__main__':
     output_dir = '../output/'
 
     DEVICE = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-    model = torch.load('../checkpoints/retina/best.pth')
+    model = torch.load('../checkpoints/retina_small/best.pth')
     model.eval()
     model.to(DEVICE)
 
@@ -77,7 +77,7 @@ if __name__ == '__main__':
                     count += 1
                     break
 
-    print('Accuracy:' + str(count / len(testList)))
+    print(f'Accuracy: {str(count / len(testList))}' )
     label_file.close()
 
     classes = ['surprise', 'fear', 'disgust', 'happiness', 'sadness', 'anger', 'neutral']

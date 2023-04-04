@@ -6,7 +6,7 @@ import numpy as np
 from process_file import fer
 
 if __name__ == "__main__":
-    capture = cv2.VideoCapture(0) # Open camera
+    capture = cv2.VideoCapture(0)  # Open camera
     ref, frame = capture.read()
     if not ref:
         raise ValueError("Cannot open the camera.")

@@ -155,7 +155,7 @@ def process_file(file_path, save_path, input_type='Video'):
     print('Process completed in ' + str(hour) + 'h ' + str(minute) + "m " + str(second) + 's. ')
 
 
-if __name__ == '__main__':
-    file_path = '../dataset/video.mp4'
-    save_path = '../output/processed_media/'
-    process_file(file_path, save_path, input_type='Video')
+# if __name__ == '__main__':
+#     file_path = '../dataset/video.mp4'
+#     save_path = '../output/processed_media/'
+#     process_file(file_path, save_path, input_type='Video')

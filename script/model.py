@@ -2,10 +2,10 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.utils.checkpoint as checkpoint
-from timm.models.swin_transformer_v2 import swinv2_small_window16_256
+from timm.models.swin_transformer_v2 import swinv2_base_window16_256, swinv2_small_window16_256
 
 
-# CBAM
+# CBAM module
 class BasicConv(nn.Module):
     def __init__(self, in_planes, out_planes, kernel_size, stride=1, padding=0, dilation=1, groups=1, relu=True,
                  bn=True, bias=False):
@@ -200,7 +200,7 @@ class PatchEmbedCBAM(nn.Module):
         return flops
 
 
-# SE
+# Squeeze and Excitation module
 class SELayer(nn.Module):
     def __init__(self, channel, reduction=4):
         super(SELayer, self).__init__()
@@ -239,7 +239,7 @@ class BasicLayerSE(nn.Module):
         return x
 
 
-# contrastive learning
+# SwinV2 for contrastive learning
 class CustomizedSwin(nn.Module):
     def __init__(self, swin):
         super().__init__()
@@ -254,27 +254,58 @@ class CustomizedSwin(nn.Module):
         return feats, x
 
 
+# SwinV2 for knowledge distillation
+class DistilledSwin(nn.Module):
+    def __init__(self, swin):
+        super().__init__()
+        self.swin = swin
+        num_ftrs = swin.head.in_features
+        self.head = nn.Linear(num_ftrs, 7)
+
+    def forward_features(self, x):
+        x = self.swin.patch_embed(x)
+        if self.swin.absolute_pos_embed is not None:
+            x = x + self.swin.absolute_pos_embed
+        x = self.swin.pos_drop(x)
+
+        block_outs = []
+        for layer in self.swin.layers:
+            x_ = x
+            for blk in layer.blocks:
+                x_ = blk(x_)
+                block_outs.append(x_)
+            x = layer(x)
+
+        x = self.swin.norm(x)  # B L C
+        return x, block_outs
+
+    def forward(self, x):
+        x, block_outs = self.forward_features(x)
+        x = x.mean(dim=1)
+        x = self.head(x)
+        return x, block_outs
+
+
 def create_model(model_name='base', class_num=7):
+    if model_name == 'center':
+        return CustomizedSwin(swinv2_small_window16_256(pretrained=True))
+    elif model_name == 'distill_base':
+        return DistilledSwin(swinv2_base_window16_256(pretrained=True))
+    elif model_name == 'distill_small':
+        return DistilledSwin(swinv2_small_window16_256(pretrained=True))
+
     model = swinv2_small_window16_256(pretrained=True)
-    if model_name == 'base' or model_name == 'focal':
-        num_ftrs = model.head.in_features
-        model.head = nn.Linear(num_ftrs, class_num)
-    elif model_name == 'cbam':
+    if model_name == 'cbam':
         model.patch_embed = PatchEmbedCBAM(model.patch_embed)
         for layer in model.layers:
             if type(layer.downsample) is not nn.Identity:
                 layer.downsample = PatchMergingCBAM(layer.downsample)
-
-        num_ftrs = model.head.in_features
-        model.head = nn.Linear(num_ftrs, class_num)
     elif model_name == 'se':
         num_layers = len(model.layers)
         for i_layer in range(num_layers):
             layer = model.layers[i_layer]
             model.layers[i_layer] = BasicLayerSE(dim=layer.dim, layer=layer)
 
-        num_ftrs = model.head.in_features
-        model.head = nn.Linear(num_ftrs, class_num)
-    elif model_name == 'center' or model_name == 'supcon':
-        model = CustomizedSwin(swinv2_small_window16_256(pretrained=True))
+    num_ftrs = model.head.in_features
+    model.head = nn.Linear(num_ftrs, class_num)
     return model

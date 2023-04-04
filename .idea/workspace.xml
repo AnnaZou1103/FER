@@ -7,24 +7,22 @@
     <list default="true" id="8d2b7db6-b2a6-456e-91d0-491116496d9e" name="Changes" comment="update">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/README.md" beforeDir="false" afterPath="$PROJECT_DIR$/README.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/preprocess/mean_std.py" beforeDir="false" afterPath="$PROJECT_DIR$/preprocess/calculate_mean_std.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/preprocess/split.py" beforeDir="false" afterPath="$PROJECT_DIR$/preprocess/split.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/preprocess/split_and_refined.py" beforeDir="false" afterPath="$PROJECT_DIR$/preprocess/split_and_refined.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/test/interface.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/test/process_file.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/test/test.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/test/test_multiface.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/test/test_real_time.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/test/test_woRetinaFace.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/train/loss.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/train/model.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/train/train.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/train/train_center.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/train/train_focal.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/train/train_propose.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/train/train_supcon.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/train/util.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/utils/calculate_param.py" beforeDir="false" afterPath="$PROJECT_DIR$/utils/calculate_param.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/interface/process_file.py" beforeDir="false" afterPath="$PROJECT_DIR$/interface/process_file.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/interface/test_real_time.py" beforeDir="false" afterPath="$PROJECT_DIR$/interface/test_real_time.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/script/distill_loss.py" beforeDir="false" afterPath="$PROJECT_DIR$/script/distill_loss.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/script/loss.py" beforeDir="false" afterPath="$PROJECT_DIR$/script/loss.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/script/model.py" beforeDir="false" afterPath="$PROJECT_DIR$/script/model.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/script/test.py" beforeDir="false" afterPath="$PROJECT_DIR$/script/test.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/script/test_multiface.py" beforeDir="false" afterPath="$PROJECT_DIR$/script/test_multiface.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/script/train.py" beforeDir="false" afterPath="$PROJECT_DIR$/script/train.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/script/train_center.py" beforeDir="false" afterPath="$PROJECT_DIR$/script/train_contrastive_learning.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/script/train_dis.py" beforeDir="false" afterPath="$PROJECT_DIR$/script/train_distillation.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/script/train_distill_base.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/script/train_distill_small.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/script/train_focal.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/script/train_propose.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/script/train_supcon.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/script/util.py" beforeDir="false" afterPath="$PROJECT_DIR$/script/util.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/utils/visualize.py" beforeDir="false" afterPath="$PROJECT_DIR$/utils/visualize.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -296,7 +294,8 @@
       <workItem from="1680157394686" duration="3839000" />
       <workItem from="1680429386179" duration="884000" />
       <workItem from="1680493383754" duration="1736000" />
-      <workItem from="1680498347753" duration="8103000" />
+      <workItem from="1680498347753" duration="12214000" />
+      <workItem from="1680567604187" duration="11864000" />
     </task>
     <task id="LOCAL-00001" summary="update">
       <created>1678005001264</created>

@@ -4,27 +4,21 @@ from torch.nn import functional as F
 
 
 class DistillationLoss(nn.Module):
-    """
-    This module wraps a standard criterion and adds an extra knowledge distillation loss by
-    taking a teacher model prediction and using it as additional supervision.
-    """
-
-    def __init__(self, base_criterion: torch.nn.Module, teacher_model: torch.nn.Module, args):
+    def __init__(self, base_criterion: torch.nn.Module, teacher_model: torch.nn.Module):
         super().__init__()
         self.base_criterion = base_criterion
         self.teacher_model = teacher_model
-        assert args.distillation_type in ['none', 'soft', 'hard']
-        self.distillation_type = args.distillation_type
-        self.tau = args.distillation_tau
+        self.distillation_type = 'soft'
+        self.tau = 0.2
 
         self.layer_ids_s = [0, 1, 2, 3, 20, 21, 22, 23]
         self.layer_ids_t = [0, 1, 2, 3, 20, 21, 22, 23]
-        self.alpha = args.distillation_alpha
-        self.beta = args.distillation_beta
-        self.w_sample = args.w_sample
-        self.w_patch = args.w_patch
-        self.w_rand = args.w_rand
-        self.K = args.K
+        self.alpha = 4.0
+        self.beta = 0.1
+        self.w_sample = 0.1
+        self.w_patch = 4
+        self.w_rand = 0.2
+        self.K = 192
 
     def forward(self, inputs, outputs, labels):
         """
@@ -48,7 +42,6 @@ class DistillationLoss(nn.Module):
         if self.distillation_type == 'none':
             return base_loss
 
-        # don't backprop throught the teacher
         with torch.no_grad():
             teacher_outputs, block_outs_t = self.teacher_model(inputs)
 

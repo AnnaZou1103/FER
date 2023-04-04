@@ -12,7 +12,7 @@ from timm.data.mixup import Mixup
 from timm.loss import SoftTargetCrossEntropy
 from torchvision import datasets
 from model import create_model
-from util import make_dir, EMA
+from util import make_dir
 
 torch.backends.cudnn.benchmark = False
 import warnings
@@ -27,7 +27,7 @@ def train(model, device, train_loader, optimizer, epoch):
     acc1_meter = AverageMeter()
     acc5_meter = AverageMeter()
     total_num = len(train_loader.dataset)
-    print(total_num, len(train_loader))
+    print(f'Total training samples: {total_num}, batch number: {len(train_loader)}')
     for batch_idx, (data, target) in enumerate(train_loader):
         if len(data) % 2 != 0:
             if len(data) < 2:
@@ -36,31 +36,29 @@ def train(model, device, train_loader, optimizer, epoch):
             target = target[0:len(target) - 1]
             print(len(data))
         data, target = data.to(device, non_blocking=True), target.to(device, non_blocking=True)
-        samples, targets = mixup_fn(data, target)
+        samples, targets = mixup_fn(data, target)  # Apply mixup augmentation
         output = model(samples)
         optimizer.zero_grad()
         if use_amp:
             with torch.cuda.amp.autocast():
-                loss = criterion_train(output, targets)
+                if isinstance(output, tuple):
+                    loss = criterion_train(output[0], targets)
+                else:
+                    loss = criterion_train(output, targets)
+
             scaler.scale(loss).backward()
-            torch.nn.utils.clip_grad_norm_(model.parameters(), CLIP_GRAD)
-            # Unscales gradients and calls
-            # or skips optimizer.step()
+            torch.nn.utils.clip_grad_norm_(model.parameters(), clip_grad)
             scaler.step(optimizer)
-            # Updates the scale for next iteration
-            scaler.update()
-            if use_ema and epoch % ema_epoch == 0:
-                ema.update()
+            scaler.update()  # Update the scale for next iteration
         else:
-            loss = criterion_train(output, targets)
+            if isinstance(output, tuple):
+                loss = criterion_train(output[0], targets)
+            else:
+                loss = criterion_train(output, targets)
             loss.backward()
-            # torch.nn.utils.clip_grad_norm_(train.parameters(), CLIP_GRAD)
             optimizer.step()
-            if use_ema and epoch % ema_epoch == 0:
-                ema.update()
         torch.cuda.synchronize()
         lr = optimizer.state_dict()['param_groups'][0]['lr']
-        loss_meter.update(loss.item(), target.size(0))
         acc1, acc5 = accuracy(output, target, topk=(1, 5))
         loss_meter.update(loss.item(), target.size(0))
         acc1_meter.update(acc1.item(), target.size(0))
@@ -77,70 +75,69 @@ def train(model, device, train_loader, optimizer, epoch):
 
 @torch.no_grad()
 def val(model, device, val_loader):
-    global Best_ACC
+    global best_acc
     model.eval()
     loss_meter = AverageMeter()
     acc1_meter = AverageMeter()
     acc5_meter = AverageMeter()
     total_num = len(val_loader.dataset)
-    print(total_num, len(val_loader))
+    print(f'Total validation samples: {total_num}, batch number:{len(val_loader)}')
     val_list = []
     pred_list = []
-    if use_ema and epoch % ema_epoch == 0:
-        ema.apply_shadow()
     for data, target in val_loader:
         for t in target:
             val_list.append(t.data.item())
         data, target = data.to(device, non_blocking=True), target.to(device, non_blocking=True)
         output = model(data)
-        loss = criterion_val(output, target)
-        _, pred = torch.max(output.data, 1)
+        if isinstance(output, tuple):
+            loss = criterion_val(output[0], target)
+            _, pred = torch.max(output[0].data, 1)
+        else:
+            loss = criterion_val(output, target)
+            _, pred = torch.max(output.data, 1)
         for p in pred:
             pred_list.append(p.data.item())
         acc1, acc5 = accuracy(output, target, topk=(1, 5))
         loss_meter.update(loss.item(), target.size(0))
         acc1_meter.update(acc1.item(), target.size(0))
         acc5_meter.update(acc5.item(), target.size(0))
-    if use_ema and epoch % ema_epoch == 0:
-        ema.restore()
     acc = acc1_meter.avg
     print('\nVal set: Average loss: {:.4f}\tAcc1:{:.3f}%\tAcc5:{:.3f}%\n'.format(
         loss_meter.avg, acc, acc5_meter.avg))
-    if acc > Best_ACC:
+    if acc > best_acc:
         if isinstance(model, torch.nn.DataParallel):
             torch.save(model.module, file_dir + "/" + 'model_' + str(epoch) + '_' + str(round(acc, 3)) + '.pth')
             torch.save(model.module, file_dir + '/' + 'best.pth')
         else:
             torch.save(model, file_dir + "/" + 'model_' + str(epoch) + '_' + str(round(acc, 3)) + '.pth')
             torch.save(model, file_dir + '/' + 'best.pth')
-        Best_ACC = acc
+        best_acc = acc
     return val_list, pred_list, loss_meter.avg, acc
 
 
 if __name__ == '__main__':
-    file_dir = '../checkpoints/retina'
-    trainset_path = '../dataset/RAFDBRefined/train'
-    valset_path = '../dataset/RAFDBRefined/val'
+    file_dir = '../checkpoints/retina_small'  # Path to store the saved model and other output files
+    trainset_path = '../dataset/RAFDBRefined/train'  # Path to the training set
+    valset_path = '../dataset/RAFDBRefined/val'  # Path to the validation set
     model_name = 'base'
     make_dir(file_dir)
 
-    # set parameters
+    # Set parameters
     img_size = 256
     model_lr = 1e-4
     weight_decay = 1e-8
-    BATCH_SIZE = 16
-    EPOCHS = 30
-    DEVICE = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+    batch_size = 16
+    epochs = 30
+    device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
     use_amp = True  # Mixed precision training
-    use_dp = True
+    use_dp = True  # Data parallel
     class_num = 7
-    resume = False
-    CLIP_GRAD = 5.0
-    model_path = '../checkpoints/FER/best.pth'
-    Best_ACC = 0
-    use_ema = True
-    ema_epoch = 32
+    resume = False  # Whether resume training
+    clip_grad = 5.0  # Clip gradients
+    model_path = '../checkpoints/small_FER/best.pth'  # The path to the checkpoints
+    best_acc = 0
 
+    # Set transform for training and validation set
     transform = transforms.Compose([
         transforms.RandomHorizontalFlip(),
         transforms.RandomRotation(10, expand=True),
@@ -165,8 +162,8 @@ if __name__ == '__main__':
     dataset_train = datasets.ImageFolder(trainset_path, transform=transform)
     dataset_test = datasets.ImageFolder(valset_path, transform=transform_test)
 
-    train_loader = torch.utils.data.DataLoader(dataset_train, batch_size=BATCH_SIZE, shuffle=True)
-    val_loader = torch.utils.data.DataLoader(dataset_test, batch_size=BATCH_SIZE, shuffle=False)
+    train_loader = torch.utils.data.DataLoader(dataset_train, batch_size=batch_size, shuffle=True)
+    val_loader = torch.utils.data.DataLoader(dataset_test, batch_size=batch_size, shuffle=False)
 
     criterion_train = SoftTargetCrossEntropy()
     criterion_val = torch.nn.CrossEntropyLoss()
@@ -175,7 +172,7 @@ if __name__ == '__main__':
 
     if resume:
         model_ft = torch.load(model_path)
-    model_ft.to(DEVICE)
+    model_ft.to(device)
 
     optimizer = optim.AdamW(model_ft.parameters(), lr=model_lr, weight_decay=weight_decay)
     cosine_schedule = optim.lr_scheduler.CosineAnnealingLR(optimizer=optimizer, T_max=20, eta_min=2e-7)
@@ -185,27 +182,24 @@ if __name__ == '__main__':
     if torch.cuda.device_count() > 1 and use_dp:
         print("Use", torch.cuda.device_count(), "GPUs")
         model_ft = torch.nn.DataParallel(model_ft)
-    if use_ema:
-        ema = EMA(model_ft, 0.999)
-        ema.register()
 
     is_set_lr = False
     log_dir = {}
     train_loss_list, val_loss_list, train_acc_list, val_acc_list, epoch_list = [], [], [], [], []
-    for epoch in range(1, EPOCHS + 1):
+    for epoch in range(1, epochs + 1):
         epoch_list.append(epoch)
-        train_loss, train_acc = train(model_ft, DEVICE, train_loader, optimizer, epoch)
+        train_loss, train_acc = train(model_ft, device, train_loader, optimizer, epoch)
         train_loss_list.append(train_loss)
         train_acc_list.append(train_acc)
         log_dir['train_acc'] = train_acc_list
         log_dir['train_loss'] = train_loss_list
 
-        val_list, pred_list, val_loss, val_acc = val(model_ft, DEVICE, val_loader)
+        val_list, pred_list, val_loss, val_acc = val(model_ft, device, val_loader)
         val_loss_list.append(val_loss)
         val_acc_list.append(val_acc)
         log_dir['val_acc'] = val_acc_list
         log_dir['val_loss'] = val_loss_list
-        log_dir['best_acc'] = Best_ACC
+        log_dir['best_acc'] = best_acc
 
         with open(file_dir + '/result.json', 'w', encoding='utf-8') as file:
             file.write(json.dumps(log_dir))
@@ -219,6 +213,7 @@ if __name__ == '__main__':
                     param_group["lr"] = 1e-6
                     is_set_lr = True
 
+        # Save plotted figures
         fig = plt.figure(1)
         plt.plot(epoch_list, train_loss_list, 'r-', label=u'Train Loss')
         plt.plot(epoch_list, val_loss_list, 'b-', label=u'Val Loss')

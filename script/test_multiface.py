@@ -26,7 +26,7 @@ def fer(img):
 
 if __name__ == '__main__':
     DEVICE = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-    model = torch.load('../checkpoints/retina/best.pth')
+    model = torch.load('../checkpoints/retina_small/best.pth')
     model.eval()
     model.to(DEVICE)
 
@@ -42,15 +42,10 @@ if __name__ == '__main__':
         num = 0
         img = cv2.imread(file)
         faces = RetinaFace.extract_faces(img, align=True)
-        if file.split('_')[-1].split('.')[0]=='':
+        if file.split('_')[-1].split('.')[0] == '':
             print(file)
             continue
         file_class = int(file.split('_')[-1].split('.')[0])
-        # if len(faces) == 0:
-        #     total+=1
-        #     if fer(Image.fromarray(img), file):
-        #         count+=1
-        # else:
         for index, face in enumerate(faces):
             if len(face[0]) <= 10 or len(face[1]) <= 10:
                 continue
@@ -61,12 +56,13 @@ if __name__ == '__main__':
                 num += 1
             if fer(crop_img) == label - 1:
                 count += 1
-            else: print(file.split('/')[-1], fer(crop_img), label - 1)
+            else:
+                print(file.split('/')[-1], fer(crop_img), label - 1)
 
         total_face += num
         correct_face += count
         if count == num:
             correct_image += 1
-    print('Total faces: ' + str(total_face))
-    print('Total image: ' + str(len(testList)))
-    print('Match ratio: ' + str(correct_image / len(testList)), 'Accuracy: ' + str(correct_face / total_face))
+    print(f'Total faces: {str(total_face)}' )
+    print(f'Total image: {str(len(testList))}' )
+    print(f'Match ratio: {str(correct_image / len(testList))}' , f'Accuracy: {str(correct_face / total_face)}' )
