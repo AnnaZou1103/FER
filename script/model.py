@@ -287,12 +287,12 @@ class DistilledSwin(nn.Module):
 
 
 def create_model(model_name='base', class_num=7):
-    if model_name == 'center':
-        return CustomizedSwin(swinv2_small_window16_256(pretrained=True))
+    if model_name == 'distill_small':
+        return DistilledSwin(swinv2_small_window16_256(pretrained=True))
     elif model_name == 'distill_base':
         return DistilledSwin(swinv2_base_window16_256(pretrained=True))
-    elif model_name == 'distill_small':
-        return DistilledSwin(swinv2_small_window16_256(pretrained=True))
+    elif model_name == 'center':
+        return CustomizedSwin(swinv2_small_window16_256(pretrained=True))
 
     model = swinv2_small_window16_256(pretrained=True)
     if model_name == 'cbam':

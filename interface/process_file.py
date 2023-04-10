@@ -8,7 +8,7 @@ import time
 import numpy as np
 import math
 
-model_path = 'checkpoints/retina_small/best.pth'  # The path to the stored model
+model_path = '../checkpoints/retina_small/best.pth'  # The path to the stored model
 DEVICE = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 MODEL = torch.load(model_path, map_location=DEVICE)
 MODEL.eval()
@@ -155,7 +155,7 @@ def process_file(file_path, save_path, input_type='Video'):
     print('Process completed in ' + str(hour) + 'h ' + str(minute) + "m " + str(second) + 's. ')
 
 
-# if __name__ == '__main__':
-#     file_path = '../dataset/video.mp4'
-#     save_path = '../output/processed_media/'
-#     process_file(file_path, save_path, input_type='Video')
+if __name__ == '__main__':
+    file_path = '../dataset/test_0506.jpg'
+    save_path = '../output/processed_media/'
+    process_file(file_path, save_path, input_type='Image')

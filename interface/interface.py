@@ -86,7 +86,7 @@ if __name__ == '__main__':
     btn_upload.place(x=480, y=60)
 
     # Set output path
-    default_save_path = 'output/processed_media/'
+    default_save_path = '../output/processed_media/'
     tk.Label(window, text='Save Path:', font=('Arial', 14)).place(x=10, y=110)
     if not os.path.exists(default_save_path):
         os.makedirs(default_save_path)

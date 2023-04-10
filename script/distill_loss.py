@@ -1,3 +1,16 @@
+# 2022.10.14-Changed for building manifold kd
+#            Huawei Technologies Co., Ltd. <foss@huawei.com>
+#
+# Modified from Fackbook, Deit
+# {haozhiwei1, jianyuan.guo}@huawei.com
+#
+# Copyright (c) 2015-present, Facebook, Inc.
+# All rights reserved.
+#
+# This source code is licensed under the CC-by-NC license found in the
+# LICENSE file in the root directory of this source tree.
+#
+
 import torch
 import torch.nn as nn
 from torch.nn import functional as F
@@ -8,11 +21,11 @@ class DistillationLoss(nn.Module):
         super().__init__()
         self.base_criterion = base_criterion
         self.teacher_model = teacher_model
-        self.distillation_type = 'soft'
+        self.distillation_type = 'soft'  # Distillation type includes soft and hard
         self.tau = 0.2
 
-        self.layer_ids_s = [0, 1, 2, 3, 20, 21, 22, 23]
-        self.layer_ids_t = [0, 1, 2, 3, 20, 21, 22, 23]
+        self.layer_ids_s = [0, 1, 2, 3, 20, 21, 22, 23]  # The selected layers for the student model
+        self.layer_ids_t = [0, 1, 2, 3, 20, 21, 22, 23]  # The selected layers for the teacher model
         self.alpha = 4.0
         self.beta = 0.1
         self.w_sample = 0.1
@@ -21,16 +34,6 @@ class DistillationLoss(nn.Module):
         self.K = 192
 
     def forward(self, inputs, outputs, labels):
-        """
-        Args:
-            inputs: The original inputs that are feed to the teacher model
-            outputs: the outputs of the model to be trained. It is expected to be
-                either a Tensor, or a Tuple[Tensor, Tensor], with the original output
-                in the first position and the distillation predictions as the second output
-            labels: the labels for the base criterion
-        """
-        # only consider the case of [outputs, block_outs_s] or [(outputs, outputs_kd), block_outs_s]
-        # i.e. 'require_feat' is always True when we compute loss
         block_outs_s = outputs[1]
         if isinstance(outputs[0], torch.Tensor):
             outputs = outputs_kd = outputs[0]
@@ -59,7 +62,8 @@ class DistillationLoss(nn.Module):
         loss_base = (1 - self.alpha) * base_loss
         loss_dist = self.alpha * distillation_loss
         loss_mf_sample, loss_mf_patch, loss_mf_rand = mf_loss(block_outs_s, block_outs_t, self.layer_ids_s,
-                                  self.layer_ids_t, self.K, self.w_sample, self.w_patch, self.w_rand)
+                                                              self.layer_ids_t, self.K, self.w_sample, self.w_patch,
+                                                              self.w_rand)
         loss_mf_sample = self.beta * loss_mf_sample
         loss_mf_patch = self.beta * loss_mf_patch
         loss_mf_rand = self.beta * loss_mf_rand
@@ -70,7 +74,7 @@ def mf_loss(block_outs_s, block_outs_t, layer_ids_s, layer_ids_t, K, w_sample, w
     losses = [[], [], []]  # loss_mf_sample, loss_mf_patch, loss_mf_rand
     for id_s, id_t in zip(layer_ids_s, layer_ids_t):
         extra_tk_num = block_outs_s[0].shape[1] - block_outs_t[0].shape[1]
-        F_s = block_outs_s[id_s][:, extra_tk_num:, :]  # remove additional tokens
+        F_s = block_outs_s[id_s][:, extra_tk_num:, :]  # Remove additional tokens
         F_t = block_outs_t[id_t]
         if max_patch_num > 0:
             F_s = merge(F_s, max_patch_num)
@@ -130,8 +134,8 @@ def merge(x, max_patch_num=196):
     B, P, C = x.shape
     if P <= max_patch_num:
         return x
-    n = int(P ** (1/2))  # original patch num at each dim
-    m = int(max_patch_num ** (1/2))  # target patch num at each dim
+    n = int(P ** (1 / 2))  # original patch num at each dim
+    m = int(max_patch_num ** (1 / 2))  # target patch num at each dim
     merge_num = n // m  # merge every (merge_num x merge_num) adjacent patches
     x = x.view(B, m, merge_num, m, merge_num, C)
     merged = x.permute(0, 1, 3, 2, 4, 5).contiguous().view(B, m * m, -1)
