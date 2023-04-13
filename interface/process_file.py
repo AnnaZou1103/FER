@@ -8,20 +8,11 @@ import time
 import numpy as np
 import math
 
-model_path = '../checkpoints/retina_small/best.pth'  # The path to the stored model
+model_path = '../checkpoints/retina_small_pretrain/best.pth'  # The path to the stored model
 DEVICE = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 MODEL = torch.load(model_path, map_location=DEVICE)
 MODEL.eval()
 MODEL.to(DEVICE)
-
-# from timm.models import swinv2_small_window16_256
-# import torch.nn as nn
-#
-# MODEL = swinv2_small_window16_256(pretrained=True)
-# num_ftrs = MODEL.head.in_features
-# MODEL.head = nn.Linear(num_ftrs, 7)
-# MODEL.eval()
-# MODEL.to(DEVICE)
 
 
 def find_euclidean_distance(source_representation, test_representation):
@@ -37,12 +28,6 @@ def alignment_procedure(img, left_eye, right_eye, nose):
 
     center_eyes = (int((left_eye_x + right_eye_x) / 2), int((left_eye_y + right_eye_y) / 2))
 
-    if False:
-        img = cv2.circle(img, (int(left_eye[0]), int(left_eye[1])), 2, (0, 255, 255), 2)
-        img = cv2.circle(img, (int(right_eye[0]), int(right_eye[1])), 2, (255, 0, 0), 2)
-        img = cv2.circle(img, center_eyes, 2, (0, 0, 255), 2)
-        img = cv2.circle(img, (int(nose[0]), int(nose[1])), 2, (255, 255, 255), 2)
-
     if left_eye_y > right_eye_y:
         point_3rd = (right_eye_x, left_eye_y)
         direction = -1  # rotate same direction to clock
@@ -55,9 +40,7 @@ def alignment_procedure(img, left_eye, right_eye, nose):
     c = find_euclidean_distance(np.array(right_eye), np.array(left_eye))
 
     if b != 0 and c != 0:  # this multiplication causes division by zero in cos_a calculation
-
         cos_a = (b * b + c * c - a * a) / (2 * b * c)
-
         cos_a = min(1.0, max(-1.0, cos_a))
 
         angle = np.arccos(cos_a)  # angle in radian

@@ -26,12 +26,12 @@ class DistillationLoss(nn.Module):
 
         self.layer_ids_s = [0, 1, 2, 3, 20, 21, 22, 23]  # The selected layers for the student model
         self.layer_ids_t = [0, 1, 2, 3, 20, 21, 22, 23]  # The selected layers for the teacher model
-        self.alpha = 4.0
-        self.beta = 0.1
-        self.w_sample = 0.1
-        self.w_patch = 4
-        self.w_rand = 0.2
-        self.K = 192
+        self.alpha = 1.0  # Weight for the knowledge distillation loss
+        self.beta = 0.1  # Weight for the manifold distillation loss
+        self.w_sample = 0.1  # Weight for intra-sample loss
+        self.w_patch = 4  # Weight for inter-sample loss
+        self.w_rand = 0.2  # Weight for random sample loss
+        self.K = 192  # Sample number
 
     def forward(self, inputs, outputs, labels):
         block_outs_s = outputs[1]
@@ -48,7 +48,7 @@ class DistillationLoss(nn.Module):
         with torch.no_grad():
             teacher_outputs, block_outs_t = self.teacher_model(inputs)
 
-        if self.distillation_type == 'soft':
+        if self.distillation_type == 'soft':  # Knowledge distillation loss
             T = self.tau
             distillation_loss = F.kl_div(
                 F.log_softmax(outputs_kd / T, dim=1),
@@ -58,9 +58,10 @@ class DistillationLoss(nn.Module):
             ) * (T * T)
         elif self.distillation_type == 'hard':
             distillation_loss = F.cross_entropy(outputs_kd, teacher_outputs.argmax(dim=1))
-
         loss_base = (1 - self.alpha) * base_loss
         loss_dist = self.alpha * distillation_loss
+
+        # Manifold distillation loss
         loss_mf_sample, loss_mf_patch, loss_mf_rand = mf_loss(block_outs_s, block_outs_t, self.layer_ids_s,
                                                               self.layer_ids_t, self.K, self.w_sample, self.w_patch,
                                                               self.w_rand)
@@ -93,18 +94,17 @@ def mf_loss(block_outs_s, block_outs_t, layer_ids_s, layer_ids_t, K, w_sample, w
 
 
 def layer_mf_loss(F_s, F_t, K):
-    # normalize at feature dim
     F_s = F.normalize(F_s, dim=-1)
     F_t = F.normalize(F_t, dim=-1)
 
-    # manifold loss among different patches (intra-sample)
+    # Manifold loss among different patches (intra-sample)
     M_s = F_s.bmm(F_s.transpose(-1, -2))
     M_t = F_t.bmm(F_t.transpose(-1, -2))
 
     M_diff = M_t - M_s
     loss_mf_patch = (M_diff * M_diff).mean()
 
-    # manifold loss among different samples (inter-sample)
+    # Manifold loss among different samples (inter-sample)
     f_s = F_s.permute(1, 0, 2)
     f_t = F_t.permute(1, 0, 2)
 
@@ -114,7 +114,7 @@ def layer_mf_loss(F_s, F_t, K):
     M_diff = M_t - M_s
     loss_mf_sample = (M_diff * M_diff).mean()
 
-    # manifold loss among random sampled patches
+    # Manifold loss among random sampled patches
     bsz, patch_num, _ = F_s.shape
     sampler = torch.randperm(bsz * patch_num)[:K]
 
@@ -134,9 +134,9 @@ def merge(x, max_patch_num=196):
     B, P, C = x.shape
     if P <= max_patch_num:
         return x
-    n = int(P ** (1 / 2))  # original patch num at each dim
-    m = int(max_patch_num ** (1 / 2))  # target patch num at each dim
-    merge_num = n // m  # merge every (merge_num x merge_num) adjacent patches
+    n = int(P ** (1 / 2))  # Original patch num at each dim
+    m = int(max_patch_num ** (1 / 2))  # Target patch num at each dim
+    merge_num = n // m  # Merge every (merge_num x merge_num) adjacent patches
     x = x.view(B, m, merge_num, m, merge_num, C)
     merged = x.permute(0, 1, 3, 2, 4, 5).contiguous().view(B, m * m, -1)
     return merged
